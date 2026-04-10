@@ -1,14 +1,15 @@
+import { supabase } from "./supabaseClient";
+
 export async function getVehicles() {
-  const response = await fetch("/api/vehicles", {
-    method: "GET",
-    cache: "no-store",
-  });
+  const { data, error } = await supabase
+    .from("vehicles")
+    .select("*")
+    .eq("is_active", true);
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Failed to fetch vehicles");
+  if (error) {
+    console.error("Supabase error:", error);
+    return [];
   }
 
-  return data.vehicles || [];
+  return data || [];
 }

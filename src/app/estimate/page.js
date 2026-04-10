@@ -100,11 +100,6 @@ function EstimateContent() {
 
         const vehicles = await getVehicles();
 
-        console.log("Raw vehicles from Supabase:", vehicles);
-        console.log("Weight param:", weightParam);
-        console.log("Weight type:", weightType);
-        console.log("Converted weight in tons:", weightNum);
-
         const normalizedVehicles = (vehicles || []).map((v) => ({
           ...v,
           min_capacity_ton: Number(v.min_capacity_ton),
@@ -116,11 +111,7 @@ function EstimateContent() {
           unloading_hours: Number(v.unloading_hours),
         }));
 
-        console.log("Normalized vehicles:", normalizedVehicles);
-
         const matchedVehicle = selectVehicle(normalizedVehicles, weightNum);
-
-        console.log("Matched vehicle:", matchedVehicle);
 
         if (!matchedVehicle) {
           setSelectedVehicle(null);
@@ -130,8 +121,7 @@ function EstimateContent() {
 
         setSelectedVehicle(matchedVehicle);
       } catch (error) {
-        console.error("Vehicle fetch/select error:", error);
-        setVehicleError(error.message || "Failed to fetch vehicle data.");
+        setVehicleError("Failed to fetch vehicle data.");
         setSelectedVehicle(null);
       } finally {
         setIsVehicleLoading(false);
@@ -139,7 +129,7 @@ function EstimateContent() {
     };
 
     fetchAndSelectVehicle();
-  }, [weightNum, weightParam, weightType]);
+  }, [weightNum]);
 
   const isPageLoading = isDistanceLoading || isVehicleLoading;
 
