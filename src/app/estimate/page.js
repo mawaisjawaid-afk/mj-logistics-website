@@ -9,7 +9,6 @@ import { selectVehicle } from "@/lib/selectVehicles";
 function EstimateContent() {
   const searchParams = useSearchParams();
 
-  // Get data from URL params
   const pickupFull = searchParams.get("pickup") || "";
   const deliveryFull = searchParams.get("delivery") || "";
   const pickupCity = searchParams.get("pickupCity") || "";
@@ -21,45 +20,37 @@ function EstimateContent() {
   const phone = searchParams.get("phone") || "";
   const email = searchParams.get("email") || "";
 
-  // Coordinates from URL params
   const pickupLat = searchParams.get("pickupLat") || "";
   const pickupLon = searchParams.get("pickupLon") || "";
   const deliveryLat = searchParams.get("deliveryLat") || "";
   const deliveryLon = searchParams.get("deliveryLon") || "";
 
-  // Convert weight to tons
   const weightNum =
     weightType === "kg"
       ? (Number(weightParam) || 0) / 1000
       : Number(weightParam) || 0;
 
-  // Parse materials
   let materials = [];
   try {
     materials = JSON.parse(materialsParam);
-  } catch (e) {
+  } catch {
     materials = ["Steel Coil"];
   }
 
-  // Display clean city names
   const pickup = pickupCity || pickupFull || "Pickup";
   const delivery = deliveryCity || deliveryFull || "Delivery";
 
-  // Route distance state
   const [distanceKm, setDistanceKm] = useState(null);
   const [routeTimeHours, setRouteTimeHours] = useState(null);
   const [isDistanceLoading, setIsDistanceLoading] = useState(true);
   const [distanceError, setDistanceError] = useState("");
 
-  // Vehicle state
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [isVehicleLoading, setIsVehicleLoading] = useState(true);
   const [vehicleError, setVehicleError] = useState("");
 
-  // Optional small fade-in after loading completes
   const [showPage, setShowPage] = useState(false);
 
-  // Fetch route distance
   useEffect(() => {
     const fetchDistance = async () => {
       if (!pickupLat || !pickupLon || !deliveryLat || !deliveryLon) {
@@ -101,7 +92,6 @@ function EstimateContent() {
     fetchDistance();
   }, [pickupLat, pickupLon, deliveryLat, deliveryLon]);
 
-  // Fetch vehicles and select by weight
   useEffect(() => {
     const fetchAndSelectVehicle = async () => {
       try {
@@ -109,6 +99,11 @@ function EstimateContent() {
         setVehicleError("");
 
         const vehicles = await getVehicles();
+
+        console.log("Raw vehicles from Supabase:", vehicles);
+        console.log("Weight param:", weightParam);
+        console.log("Weight type:", weightType);
+        console.log("Converted weight in tons:", weightNum);
 
         const normalizedVehicles = (vehicles || []).map((v) => ({
           ...v,
@@ -121,7 +116,11 @@ function EstimateContent() {
           unloading_hours: Number(v.unloading_hours),
         }));
 
+        console.log("Normalized vehicles:", normalizedVehicles);
+
         const matchedVehicle = selectVehicle(normalizedVehicles, weightNum);
+
+        console.log("Matched vehicle:", matchedVehicle);
 
         if (!matchedVehicle) {
           setSelectedVehicle(null);
@@ -131,7 +130,8 @@ function EstimateContent() {
 
         setSelectedVehicle(matchedVehicle);
       } catch (error) {
-        setVehicleError("Failed to fetch vehicle data.");
+        console.error("Vehicle fetch/select error:", error);
+        setVehicleError(error.message || "Failed to fetch vehicle data.");
         setSelectedVehicle(null);
       } finally {
         setIsVehicleLoading(false);
@@ -139,9 +139,8 @@ function EstimateContent() {
     };
 
     fetchAndSelectVehicle();
-  }, [weightNum]);
+  }, [weightNum, weightParam, weightType]);
 
-  // Final loading state
   const isPageLoading = isDistanceLoading || isVehicleLoading;
 
   useEffect(() => {
@@ -156,7 +155,6 @@ function EstimateContent() {
     }
   }, [isPageLoading]);
 
-  // Estimated cost from DB vehicle rate/km
   const finalCost = useMemo(() => {
     if (!selectedVehicle || distanceKm === null) return null;
 
@@ -166,7 +164,6 @@ function EstimateContent() {
     return Math.max(baseCost, minCharge);
   }, [selectedVehicle, distanceKm]);
 
-  // Transit time
   const totalTransitHours = useMemo(() => {
     if (!selectedVehicle || distanceKm === null) return null;
 
@@ -204,7 +201,6 @@ function EstimateContent() {
     alert("Your quotation request has been sent! We will contact you shortly.");
   };
 
-  // Full page branded loader
   if (isPageLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-white px-4">
