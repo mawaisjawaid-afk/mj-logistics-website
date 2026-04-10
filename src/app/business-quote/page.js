@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function BusinessQuotePage() {
+function BusinessQuoteContent() {
   const searchParams = useSearchParams();
   const [weight, setWeight] = useState("");
   const [weightType, setWeightType] = useState("ton");
@@ -158,5 +158,13 @@ export default function BusinessQuotePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function BusinessQuotePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <BusinessQuoteContent />
+    </Suspense>
   );
 }
