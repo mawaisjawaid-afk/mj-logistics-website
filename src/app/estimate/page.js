@@ -27,7 +27,11 @@ function EstimateContent() {
   const deliveryLat = searchParams.get("deliveryLat") || "";
   const deliveryLon = searchParams.get("deliveryLon") || "";
 
-  const weightNum = Number(weightParam) || 0;
+  // Convert weight to tons
+  const weightNum =
+    weightType === "kg"
+      ? (Number(weightParam) || 0) / 1000
+      : Number(weightParam) || 0;
 
   // Parse materials
   let materials = [];
@@ -105,7 +109,19 @@ function EstimateContent() {
         setVehicleError("");
 
         const vehicles = await getVehicles();
-        const matchedVehicle = selectVehicle(vehicles, weightNum);
+
+        const normalizedVehicles = (vehicles || []).map((v) => ({
+          ...v,
+          min_capacity_ton: Number(v.min_capacity_ton),
+          max_capacity_ton: Number(v.max_capacity_ton),
+          rate_per_km: Number(v.rate_per_km),
+          minimum_charge: Number(v.minimum_charge),
+          loaded_avg_speed_kmph: Number(v.loaded_avg_speed_kmph),
+          loading_hours: Number(v.loading_hours),
+          unloading_hours: Number(v.unloading_hours),
+        }));
+
+        const matchedVehicle = selectVehicle(normalizedVehicles, weightNum);
 
         if (!matchedVehicle) {
           setSelectedVehicle(null);
@@ -234,7 +250,7 @@ function EstimateContent() {
           <div className="overflow-hidden rounded-[20px] bg-red-700 shadow-sm">
             <div className="flex min-h-[58px] items-center justify-between px-4 sm:px-5 md:min-h-[64px] md:px-6">
               <button
-                onClick={() => window.location.href = "/"}
+                onClick={() => (window.location.href = "/")}
                 aria-label="Go back"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10"
               >
