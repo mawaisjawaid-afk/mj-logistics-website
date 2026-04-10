@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function EnterDetailsPage() {
+function EnterDetailsContent() {
   const searchParams = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -227,5 +227,13 @@ export default function EnterDetailsPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function EnterDetailsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <EnterDetailsContent />
+    </Suspense>
   );
 }

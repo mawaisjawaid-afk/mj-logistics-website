@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { getVehicles } from "@/lib/getVehicles";
 import { selectVehicle } from "@/lib/selectVehicles";
 
-export default function EstimatePage() {
+function EstimateContent() {
   const searchParams = useSearchParams();
 
   // Get data from URL params
@@ -456,5 +456,13 @@ export default function EstimatePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function EstimatePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <EstimateContent />
+    </Suspense>
   );
 }

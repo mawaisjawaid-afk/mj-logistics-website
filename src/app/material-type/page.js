@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function MaterialTypePage() {
+function MaterialTypeContent() {
   const searchParams = useSearchParams();
   const [materialInput, setMaterialInput] = useState("");
   const [materials, setMaterials] = useState([]);
@@ -228,5 +228,13 @@ export default function MaterialTypePage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function MaterialTypePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <MaterialTypeContent />
+    </Suspense>
   );
 }
