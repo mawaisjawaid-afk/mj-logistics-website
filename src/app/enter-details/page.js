@@ -419,8 +419,8 @@ function EnterDetailsContent() {
                       </button>
                     </div>
 
-                    <p className="mt-2 text-sm text-gray-600">
-                      We have sent a 6-digit verification code to your email.
+                    <p className="mt-2 text-sm leading-6 text-gray-600">
+                      We have sent a <span className="whitespace-nowrap">6-digit</span> verification code to your email.
                     </p>
 
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:flex-nowrap sm:gap-3">

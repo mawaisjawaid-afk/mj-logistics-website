@@ -771,6 +771,38 @@ export async function POST(req) {
       safeFinalCost,
     });
 
+    const customerDetailsTableHtml = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0 0;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;">
+        <tr>
+          <td colspan="2" style="padding:14px 16px;background:#111827;font-size:13px;font-weight:700;color:#ffffff;text-align:center;letter-spacing:0.3px;">
+            Customer Details
+          </td>
+        </tr>
+        ${[
+          ["Customer Name", safeName],
+          ["Phone Number", safePhone],
+          ["Email Address", customerEmail || "Not provided"],
+        ]
+          .map(
+            ([label, value], index, arr) => `
+              <tr>
+                <td style="padding:12px 14px;background:#f9fafb;border-bottom:${
+                  index === arr.length - 1 ? "0" : "1px solid #e5e7eb"
+                };font-size:13px;font-weight:700;color:#111827;width:40%;text-align:left;">
+                  ${escapeHtml(label)}
+                </td>
+                <td style="padding:12px 14px;border-bottom:${
+                  index === arr.length - 1 ? "0" : "1px solid #e5e7eb"
+                };font-size:13px;color:#4b5563;text-align:center;">
+                  ${escapeHtml(value)}
+                </td>
+              </tr>
+            `
+          )
+          .join("")}
+      </table>
+    `;
+
     const detailsTableHtml = `
       <table width="100%" cellpadding="0" cellspacing="0" style="margin:22px 0 0 0;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;">
         <tr>
@@ -850,6 +882,7 @@ export async function POST(req) {
                       </div>
                     </div>
 
+                    ${customerDetailsTableHtml}
                     ${detailsTableHtml}
 
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0 0;background:#fffaf0;border:1px solid #fcd34d;border-radius:14px;">
