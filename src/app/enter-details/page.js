@@ -1,13 +1,22 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 function EnterDetailsContent() {
   const searchParams = useSearchParams();
+
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [email, setEmail] = useState("");
+
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  const [resendTimer, setResendTimer] = useState(0);
+  const otpRefs = useRef([]);
 
   // Get data from URL params
   const pickupFull = searchParams.get("pickup") || "";
@@ -36,53 +45,54 @@ function EnterDetailsContent() {
   const pickup = pickupCity || pickupFull || "Pickup";
   const delivery = deliveryCity || deliveryFull || "Delivery";
 
-  // Back button - go to material type page
-  const handleBack = () => {
-    const params = new URLSearchParams({
-      pickup: pickupFull,
-      pickupCity,
-      delivery: deliveryFull,
-      deliveryCity,
-      weight,
-      type: weightType,
-      materials: materialsParam,
-      pickupLat,
-      pickupLon,
-      deliveryLat,
-      deliveryLon,
-    });
+  useEffect(() => {
+    if (resendTimer <= 0) return;
 
-    window.location.href = `/material-type?${params.toString()}`;
-  };
+    const interval = setInterval(() => {
+      setResendTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
-  const handleGetPrice = () => {
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const validateFields = () => {
     if (!fullName.trim()) {
       alert("Please enter your full name");
-      return;
+      return false;
     }
 
     if (!phoneNumber.trim()) {
       alert("Please enter WhatsApp number");
-      return;
+      return false;
     }
 
     if (!email.trim()) {
       alert("Please enter email address");
-      return;
+      return false;
     }
 
     const phoneRegex = /^[0-9+\-\s]{10,15}$/;
     if (!phoneRegex.test(phoneNumber.trim())) {
       alert("Please enter a valid phone number");
-      return;
+      return false;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       alert("Please enter a valid email address");
-      return;
+      return false;
     }
 
+    return true;
+  };
+
+  const redirectToEstimate = () => {
     const params = new URLSearchParams({
       pickup: pickupFull,
       pickupCity,
@@ -101,6 +111,195 @@ function EnterDetailsContent() {
     });
 
     window.location.href = `/estimate?${params.toString()}`;
+  };
+
+  const handleVerifyOtp = async (otpOverride) => {
+    const otpToVerify = (otpOverride ?? otp).trim();
+
+    if (otpToVerify.length !== 6) {
+      alert("Please enter the complete 6-digit OTP");
+      return;
+    }
+
+    try {
+      setVerifyingOtp(true);
+
+      const response = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otpToVerify,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "OTP verification failed");
+        return;
+      }
+
+      redirectToEstimate();
+    } catch (error) {
+      console.error("Verify OTP error:", error);
+      alert("Something went wrong while verifying OTP");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const sendOtpRequest = async (isResend = false) => {
+    try {
+      setSendingOtp(true);
+
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          name: fullName.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Failed to send OTP");
+        return false;
+      }
+
+      setOtpSent(true);
+      setOtp("");
+      setResendTimer(30);
+
+      setTimeout(() => {
+        otpRefs.current[0]?.focus();
+      }, 100);
+
+      alert(
+        isResend
+          ? "OTP resent to your email address"
+          : "OTP sent to your email address"
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Send OTP error:", error);
+      alert("Something went wrong while sending OTP");
+      return false;
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!validateFields()) return;
+    await sendOtpRequest(false);
+  };
+
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || sendingOtp) return;
+    if (!validateFields()) return;
+    await sendOtpRequest(true);
+  };
+
+  const handleOtpChange = async (index, value) => {
+    const cleanValue = value.replace(/\D/g, "");
+
+    if (!cleanValue) {
+      const otpArray = otp.split("");
+      while (otpArray.length < 6) otpArray.push("");
+      otpArray[index] = "";
+      setOtp(otpArray.join("").slice(0, 6));
+      return;
+    }
+
+    const digit = cleanValue[cleanValue.length - 1];
+    const otpArray = otp.split("");
+
+    while (otpArray.length < 6) {
+      otpArray.push("");
+    }
+
+    otpArray[index] = digit;
+    const newOtp = otpArray.join("").slice(0, 6);
+    setOtp(newOtp);
+
+    if (index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+
+    if (newOtp.replace(/\D/g, "").length === 6 && !verifyingOtp) {
+      setTimeout(() => {
+        handleVerifyOtp(newOtp);
+      }, 150);
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace") {
+      const otpArray = otp.split("");
+      while (otpArray.length < 6) otpArray.push("");
+
+      if (otpArray[index]) {
+        otpArray[index] = "";
+        setOtp(otpArray.join("").slice(0, 6));
+      } else if (index > 0) {
+        otpRefs.current[index - 1]?.focus();
+      }
+    }
+
+    if (e.key === "ArrowLeft" && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+
+    if (e.key === "ArrowRight" && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+
+    if (!pasted) return;
+
+    setOtp(pasted);
+
+    const nextIndex = Math.min(pasted.length - 1, 5);
+    otpRefs.current[nextIndex]?.focus();
+
+    if (pasted.replace(/\D/g, "").length === 6 && !verifyingOtp) {
+      setTimeout(() => {
+        handleVerifyOtp(pasted);
+      }, 150);
+    }
+  };
+
+  const handleBack = () => {
+    const params = new URLSearchParams({
+      pickup: pickupFull,
+      pickupCity,
+      delivery: deliveryFull,
+      deliveryCity,
+      weight,
+      type: weightType,
+      materials: materialsParam,
+      pickupLat,
+      pickupLon,
+      deliveryLat,
+      deliveryLon,
+    });
+
+    window.location.href = `/material-type?${params.toString()}`;
   };
 
   return (
@@ -212,15 +411,80 @@ function EnterDetailsContent() {
                     className="h-[52px] w-full rounded-[14px] border border-gray-200 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 md:h-[56px] md:text-base"
                   />
                 </div>
+
+                {otpSent && (
+                  <div>
+                    <label className="mb-2 block text-base font-semibold text-gray-900 md:text-lg">
+                      Enter OTP
+                    </label>
+
+                    <div className="flex justify-center gap-2 sm:gap-3">
+                      {[0, 1, 2, 3, 4, 5].map((index) => (
+                        <input
+                          key={index}
+                          ref={(el) => {
+                            otpRefs.current[index] = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete={index === 0 ? "one-time-code" : "off"}
+                          maxLength={1}
+                          value={otp[index] || ""}
+                          onChange={(e) =>
+                            handleOtpChange(index, e.target.value)
+                          }
+                          onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                          onPaste={handleOtpPaste}
+                          className="h-[52px] w-[44px] rounded-[14px] border border-gray-200 text-center text-lg font-semibold text-gray-900 outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 md:h-[56px] md:w-[52px] md:text-xl"
+                        />
+                      ))}
+                    </div>
+
+                    <p className="mt-3 text-center text-xs text-gray-500 md:text-sm">
+                      Enter the 6-digit code sent to your email
+                    </p>
+
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                      {resendTimer > 0 ? (
+                        <p className="text-sm text-gray-500">
+                          Resend OTP in{" "}
+                          <span className="font-semibold text-gray-900">
+                            {resendTimer}s
+                          </span>
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={sendingOtp}
+                          className="text-sm font-semibold text-red-700 transition hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {sendingOtp ? "Resending..." : "Resend OTP"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 flex justify-center">
-                <button
-                  onClick={handleGetPrice}
-                  className="rounded-[14px] bg-red-700 px-8 py-3 text-sm font-semibold text-white transition hover:bg-red-800 md:min-w-[180px] md:text-base"
-                >
-                  Get price
-                </button>
+                {!otpSent ? (
+                  <button
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp}
+                    className="rounded-[14px] bg-red-700 px-8 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[180px] md:text-base"
+                  >
+                    {sendingOtp ? "Sending OTP..." : "Get price"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleVerifyOtp()}
+                    disabled={verifyingOtp}
+                    className="rounded-[14px] bg-red-700 px-8 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[180px] md:text-base"
+                  >
+                    {verifyingOtp ? "Verifying..." : "Verify OTP"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
