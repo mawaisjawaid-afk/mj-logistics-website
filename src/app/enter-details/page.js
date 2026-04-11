@@ -400,21 +400,22 @@ function EnterDetailsContent() {
                   </button>
                 ) : (
                   <div className="rounded-[18px] border border-gray-200 bg-gray-50 p-4 md:p-5">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <h3 className="text-sm font-bold text-gray-900 md:text-base">
                         Enter OTP
                       </h3>
+
                       <button
                         type="button"
                         onClick={handleResendOtp}
                         disabled={resendTimer > 0 || sendingOtp}
-                        className="text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                        className="self-start text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:text-gray-400 sm:self-auto"
                       >
                         {resendTimer > 0
                           ? `Resend in ${resendTimer}s`
                           : sendingOtp
-                          ? "Resending..."
-                          : "Resend OTP"}
+                            ? "Resending..."
+                            : "Resend OTP"}
                       </button>
                     </div>
 
@@ -422,7 +423,7 @@ function EnterDetailsContent() {
                       We have sent a 6-digit verification code to your email.
                     </p>
 
-                    <div className="mt-4 flex items-center justify-center gap-2 md:gap-3">
+                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:flex-nowrap sm:gap-3">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <input
                           key={index}
@@ -433,12 +434,10 @@ function EnterDetailsContent() {
                           inputMode="numeric"
                           maxLength={1}
                           value={otp[index] || ""}
-                          onChange={(e) =>
-                            handleOtpChange(index, e.target.value)
-                          }
+                          onChange={(e) => handleOtpChange(index, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(index, e)}
                           onPaste={handleOtpPaste}
-                          className="h-12 w-12 rounded-[12px] border border-gray-300 text-center text-lg font-bold outline-none transition focus:border-red-700 md:h-14 md:w-14"
+                          className="h-11 w-11 min-w-[44px] rounded-[12px] border border-gray-300 text-center text-base font-bold outline-none transition focus:border-red-700 sm:h-12 sm:w-12 md:h-14 md:w-14 md:text-lg"
                         />
                       ))}
                     </div>

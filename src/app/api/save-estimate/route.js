@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import fs from "fs";
 import path from "path";
@@ -13,15 +13,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const formatDateTime = (date) =>
   new Date(date).toLocaleString("en-PK", {
@@ -984,15 +976,17 @@ export async function POST(req) {
     const attachments = [
       {
         filename: `${estimateCode}.pdf`,
-        content: pdfBuffer,
-        contentType: "application/pdf",
+        content: pdfBuffer.toString("base64"),
       },
     ];
 
+    const fromEmail =
+      process.env.RESEND_FROM_EMAIL || "MJ Logistic Services <no-reply@mjlogisticservices.com>";
+
     const emailJobs = [
-      transporter.sendMail({
-        from: `"MJ Logistic Services" <${process.env.SMTP_USER}>`,
-        to: "estimates@mjlogisticservices.com",
+      resend.emails.send({
+        from: fromEmail,
+        to: ["estimates@mjlogisticservices.com"],
         subject: `[NEW ESTIMATE] ${estimateCode}`,
         html: companyEmailHtml,
         attachments,
@@ -1001,9 +995,9 @@ export async function POST(req) {
 
     if (customerEmail) {
       emailJobs.push(
-        transporter.sendMail({
-          from: `"MJ Logistic Services" <${process.env.SMTP_USER}>`,
-          to: customerEmail,
+        resend.emails.send({
+          from: fromEmail,
+          to: [customerEmail],
           subject: `Your Estimate - ${estimateCode}`,
           html: customerEmailHtml,
           attachments,
@@ -1011,15 +1005,13 @@ export async function POST(req) {
       );
     }
 
-    await Promise.all(emailJobs);
+    const emailResults = await Promise.all(emailJobs);
 
-    await transporter.sendMail({
-      from: `"MJ Logistic Services" <${process.env.SMTP_USER}>`,
-      to: "estimates@mjlogisticservices.com",
-      subject: `[NEW ESTIMATE] ${estimateCode}`,
-      html: companyEmailHtml,
-      attachments,
-    });
+    for (const result of emailResults) {
+      if (result?.error) {
+        throw new Error(result.error.message || "Failed to send email");
+      }
+    }
 
     return NextResponse.json({
       success: true,
