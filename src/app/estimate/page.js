@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { getVehicles } from "@/lib/getVehicles";
@@ -50,6 +51,68 @@ function EstimateContent() {
   const [vehicleError, setVehicleError] = useState("");
 
   const [showPage, setShowPage] = useState(false);
+
+  const [estimateId, setEstimateId] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasSavedEstimate = useRef(false);
+
+  const generatedAt = useMemo(() => {
+    return new Date().toLocaleString("en-PK", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }, []);
+
+  const estimateStorageKey = useMemo(() => {
+    return [
+      "mj-estimate",
+      pickupFull,
+      deliveryFull,
+      pickupCity,
+      deliveryCity,
+      pickupLat,
+      pickupLon,
+      deliveryLat,
+      deliveryLon,
+      weightParam,
+      weightType,
+      materialsParam,
+      fullName,
+      phone,
+      email,
+    ].join("|");
+  }, [
+    pickupFull,
+    deliveryFull,
+    pickupCity,
+    deliveryCity,
+    pickupLat,
+    pickupLon,
+    deliveryLat,
+    deliveryLon,
+    weightParam,
+    weightType,
+    materialsParam,
+    fullName,
+    phone,
+    email,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedEstimateId = window.sessionStorage.getItem(estimateStorageKey);
+
+    if (storedEstimateId) {
+      setEstimateId(storedEstimateId);
+      hasSavedEstimate.current = true;
+    }
+  }, [estimateStorageKey]);
 
   useEffect(() => {
     const fetchDistance = async () => {
@@ -173,23 +236,111 @@ function EstimateContent() {
   }, [distanceKm]);
 
   const transitDisplay = useMemo(() => {
-    if (totalTransitHours !== null) return `${totalTransitHours.toFixed(1)} hours`;
+    if (totalTransitHours !== null)
+      return `${totalTransitHours.toFixed(1)} hours`;
     if (routeTimeHours !== null) return `${routeTimeHours.toFixed(1)} hours`;
     return "Transit unavailable";
   }, [totalTransitHours, routeTimeHours]);
 
   const costDisplay = useMemo(() => {
-    if (finalCost !== null) return `PKR ${Math.round(finalCost).toLocaleString()}`;
+    if (finalCost !== null)
+      return `PKR ${Math.round(finalCost).toLocaleString()}`;
     return "PKR N/A";
   }, [finalCost]);
 
+  const saveEstimate = async () => {
+    try {
+      setIsSaving(true);
+
+      const res = await fetch("/api/save-estimate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName,
+          phone,
+          email,
+          pickup,
+          delivery,
+          pickupCity,
+          deliveryCity,
+          pickupLat: pickupLat ? Number(pickupLat) : null,
+          pickupLon: pickupLon ? Number(pickupLon) : null,
+          deliveryLat: deliveryLat ? Number(deliveryLat) : null,
+          deliveryLon: deliveryLon ? Number(deliveryLon) : null,
+          weight: weightNum,
+          weightType,
+          materials,
+          distanceKm,
+          transitHours: totalTransitHours ?? routeTimeHours,
+          vehicleName: selectedVehicle?.vehicle_name || null,
+          finalCost,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to save estimate");
+      }
+
+      if (data.success && data.estimateId) {
+        setEstimateId(data.estimateId);
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(
+            estimateStorageKey,
+            data.estimateId
+          );
+        }
+      }
+    } catch (err) {
+      console.error("Save estimate error:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    const readyToSave =
+      !isPageLoading &&
+      selectedVehicle &&
+      distanceKm !== null &&
+      finalCost !== null &&
+      !estimateId &&
+      !hasSavedEstimate.current;
+
+    if (readyToSave) {
+      hasSavedEstimate.current = true;
+      saveEstimate();
+    }
+  }, [
+    isPageLoading,
+    selectedVehicle,
+    distanceKm,
+    finalCost,
+    totalTransitHours,
+    routeTimeHours,
+    estimateId,
+  ]);
+
   const handleRefine = () => {
-    window.location.href = "/";
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   const handleRequestQuotation = () => {
     alert("Your quotation request has been sent! We will contact you shortly.");
   };
+
+  const handleDownloadPDF = () => {
+    window.print();
+  };
+
+  const buttonClass =
+    "rounded-[12px] border border-red-700 bg-white px-5 py-2.5 text-xs font-semibold text-red-700 transition-all duration-200 hover:bg-red-700 hover:text-white hover:shadow-md md:text-sm";
 
   if (isPageLoading) {
     return (
@@ -288,9 +439,41 @@ function EstimateContent() {
       <section className="bg-[#f8fafc] px-4 pb-8 pt-6 md:px-6 md:pb-10 md:pt-8 lg:px-8">
         <div className="mx-auto max-w-[1400px]">
           <div className="mx-auto max-w-[860px] text-center">
+            <div className="mb-4 flex justify-center">
+              <Link
+                href="/"
+                aria-label="Go to home page"
+                className="transition-transform duration-200 hover:scale-[1.05]"
+              >
+                <Image
+                  src="/logo-6.png"
+                  alt="MJ Logistics"
+                  width={130}
+                  height={130}
+                  className="h-auto w-auto object-contain"
+                  priority
+                />
+              </Link>
+            </div>
+
             <h1 className="text-2xl font-bold leading-tight tracking-[-0.03em] text-gray-900 sm:text-3xl md:text-4xl">
               Instant Estimate
             </h1>
+
+            <div className="mt-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-center sm:gap-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                Estimate ID:{" "}
+                <span className="text-gray-900">
+                  {estimateId || "Generating..."}
+                </span>
+              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
+                Generated:{" "}
+                <span className="normal-case tracking-normal text-gray-900">
+                  {generatedAt}
+                </span>
+              </p>
+            </div>
           </div>
 
           <div className="mx-auto mt-4 max-w-[840px] md:mt-5">
@@ -418,23 +601,21 @@ function EstimateContent() {
 
               <div className="mt-3 rounded-[14px] border border-amber-100 bg-amber-50 px-4 py-2.5">
                 <p className="text-center text-xs text-amber-900">
-                  Final price may vary based on the confirmed quotation.
+                  Prices are indicative and subject to route inspection, fuel fluctuation, and operational constraints.
                 </p>
               </div>
 
-              <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:justify-center">
-                <button
-                  onClick={handleRefine}
-                  className="rounded-[12px] border border-red-700 bg-white px-5 py-2.5 text-xs font-semibold text-red-700 transition hover:bg-red-50 md:text-sm"
-                >
+              <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:justify-center">
+                <button onClick={handleRefine} className={buttonClass}>
                   Refine with exact locations
                 </button>
 
-                <button
-                  onClick={handleRequestQuotation}
-                  className="rounded-[12px] bg-red-700 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-red-800 md:text-sm"
-                >
+                <button onClick={handleRequestQuotation} className={buttonClass}>
                   Request final quotation
+                </button>
+
+                <button onClick={handleDownloadPDF} className={buttonClass}>
+                  Download PDF
                 </button>
               </div>
 
