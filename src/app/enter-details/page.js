@@ -396,7 +396,7 @@ function EnterDetailsContent() {
                     disabled={sendingOtp}
                     className="mt-2 rounded-[14px] bg-red-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {sendingOtp ? "Sending OTP..." : "Send OTP"}
+                    {sendingOtp ? "Generating OTP..." : "Generate Estimate"}
                   </button>
                 ) : (
                   <div className="rounded-[18px] border border-gray-200 bg-gray-50 p-4 md:p-5">
@@ -423,7 +423,7 @@ function EnterDetailsContent() {
                       We have sent a <span className="whitespace-nowrap">6-digit</span> verification code to your email.
                     </p>
 
-                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:flex-nowrap sm:gap-3">
+                    <div className="mt-4 flex items-center justify-center gap-1.5 sm:gap-3">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <input
                           key={index}
@@ -437,7 +437,7 @@ function EnterDetailsContent() {
                           onChange={(e) => handleOtpChange(index, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(index, e)}
                           onPaste={handleOtpPaste}
-                          className="h-11 w-11 min-w-[44px] rounded-[12px] border border-gray-300 text-center text-base font-bold outline-none transition focus:border-red-700 sm:h-12 sm:w-12 md:h-14 md:w-14 md:text-lg"
+                          className="h-10 w-10 min-w-[40px] rounded-[10px] border border-gray-300 text-center text-sm font-bold outline-none transition focus:border-red-700 sm:h-12 sm:w-12 sm:min-w-[48px] sm:text-base md:h-14 md:w-14 md:text-lg"
                         />
                       ))}
                     </div>

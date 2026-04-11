@@ -882,7 +882,6 @@ export async function POST(req) {
                       </div>
                     </div>
 
-                    ${customerDetailsTableHtml}
                     ${detailsTableHtml}
 
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0 0;background:#fffaf0;border:1px solid #fcd34d;border-radius:14px;">
@@ -962,6 +961,7 @@ export async function POST(req) {
                       </div>
                     </div>
 
+                    ${customerDetailsTableHtml}
                     ${detailsTableHtml}
 
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0 0;background:#fffaf0;border:1px solid #fcd34d;border-radius:14px;">
