@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { getVehicles } from "@/lib/getVehicles";
-import { selectVehicle } from "@/lib/selectVehicles";
 
 function EstimateContent() {
   const searchParams = useSearchParams();
@@ -16,7 +14,7 @@ function EstimateContent() {
   const deliveryCity = searchParams.get("deliveryCity") || "";
   const weightParam = searchParams.get("weight") || "15";
   const weightType = searchParams.get("type") || "ton";
-  const materialsParam = searchParams.get("materials") || '["Steel Coil"]';
+  const materialsParam = searchParams.get("materials") || "[]";
   const fullName = searchParams.get("name") || "Guest User";
   const phone = searchParams.get("phone") || "";
   const email = searchParams.get("email") || "";
@@ -26,67 +24,82 @@ function EstimateContent() {
   const deliveryLat = searchParams.get("deliveryLat") || "";
   const deliveryLon = searchParams.get("deliveryLon") || "";
 
-  const weightNum =
-    weightType === "kg"
-      ? (Number(weightParam) || 0) / 1000
-      : Number(weightParam) || 0;
+  const pickup = pickupCity || pickupFull || "Pickup";
+  const delivery = deliveryCity || deliveryFull || "Delivery";
+
+  const [showPage, setShowPage] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(true);
+  const [prepareError, setPrepareError] = useState("");
+  const [estimatePayload, setEstimatePayload] = useState(null);
 
   let materials = [];
   try {
     materials = JSON.parse(materialsParam);
   } catch {
-    materials = ["Steel Coil"];
+    materials = [];
   }
 
-  const pickup = pickupCity || pickupFull || "Pickup";
-  const delivery = deliveryCity || deliveryFull || "Delivery";
+  const weightNum = useMemo(() => {
+    return weightType === "kg"
+      ? (Number(weightParam) || 0) / 1000
+      : Number(weightParam) || 0;
+  }, [weightParam, weightType]);
 
-  const [distanceKm, setDistanceKm] = useState(null);
-  const [routeTimeHours, setRouteTimeHours] = useState(null);
-  const [isDistanceLoading, setIsDistanceLoading] = useState(true);
-  const [distanceError, setDistanceError] = useState("");
+  useEffect(() => {
+    const prepareEstimate = async () => {
+      try {
+        setIsPreparing(true);
+        setPrepareError("");
 
-  const [selectedVehicle, setSelectedVehicle] = useState(null);
-  const [isVehicleLoading, setIsVehicleLoading] = useState(true);
-  const [vehicleError, setVehicleError] = useState("");
+        const response = await fetch("/api/save-estimate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fullName,
+            phone,
+            email,
+            pickup: pickupFull,
+            delivery: deliveryFull,
+            pickupCity,
+            deliveryCity,
+            pickupLat: pickupLat ? Number(pickupLat) : null,
+            pickupLon: pickupLon ? Number(pickupLon) : null,
+            deliveryLat: deliveryLat ? Number(deliveryLat) : null,
+            deliveryLon: deliveryLon ? Number(deliveryLon) : null,
+            weight: weightNum,
+            weightType,
+            materials,
+          }),
+        });
 
-  const [showPage, setShowPage] = useState(false);
+        const data = await response.json();
 
-  const [estimateId, setEstimateId] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to prepare estimate");
+        }
 
-  const hasSavedEstimate = useRef(false);
+        setEstimatePayload(data);
 
-  const generatedAt = useMemo(() => {
-    return new Date().toLocaleString("en-PK", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  }, []);
+        const timer = setTimeout(() => {
+          setShowPage(true);
+        }, 150);
 
-  const estimateStorageKey = useMemo(() => {
-    return [
-      "mj-estimate",
-      pickupFull,
-      deliveryFull,
-      pickupCity,
-      deliveryCity,
-      pickupLat,
-      pickupLon,
-      deliveryLat,
-      deliveryLon,
-      weightParam,
-      weightType,
-      materialsParam,
-      fullName,
-      phone,
-      email,
-    ].join("|");
+        return () => clearTimeout(timer);
+      } catch (error) {
+        console.error("Prepare estimate error:", error);
+        setPrepareError(error.message || "Unable to prepare estimate");
+      } finally {
+        setIsPreparing(false);
+      }
+    };
+
+    prepareEstimate();
   }, [
+    fullName,
+    phone,
+    email,
     pickupFull,
     deliveryFull,
     pickupCity,
@@ -95,235 +108,26 @@ function EstimateContent() {
     pickupLon,
     deliveryLat,
     deliveryLon,
-    weightParam,
+    weightNum,
     weightType,
     materialsParam,
-    fullName,
-    phone,
-    email,
   ]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const estimateId = estimatePayload?.estimateId || "";
+  const generatedAt = estimatePayload?.generatedAt || "";
 
-    const storedEstimateId = window.sessionStorage.getItem(estimateStorageKey);
-
-    if (storedEstimateId) {
-      setEstimateId(storedEstimateId);
-      hasSavedEstimate.current = true;
-    }
-  }, [estimateStorageKey]);
-
-  useEffect(() => {
-    const fetchDistance = async () => {
-      if (!pickupLat || !pickupLon || !deliveryLat || !deliveryLon) {
-        setDistanceError("Missing route coordinates");
-        setIsDistanceLoading(false);
-        return;
-      }
-
-      try {
-        setIsDistanceLoading(true);
-        setDistanceError("");
-
-        const response = await fetch(
-          `/api/route-distance?pickupLat=${encodeURIComponent(
-            pickupLat
-          )}&pickupLon=${encodeURIComponent(
-            pickupLon
-          )}&deliveryLat=${encodeURIComponent(
-            deliveryLat
-          )}&deliveryLon=${encodeURIComponent(deliveryLon)}`,
-          { cache: "no-store" }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to fetch distance");
-        }
-
-        setDistanceKm(data.distanceKm ?? null);
-        setRouteTimeHours(data.timeHours ?? null);
-      } catch (error) {
-        setDistanceError(error.message || "Unable to calculate distance");
-      } finally {
-        setIsDistanceLoading(false);
-      }
-    };
-
-    fetchDistance();
-  }, [pickupLat, pickupLon, deliveryLat, deliveryLon]);
-
-  useEffect(() => {
-    const fetchAndSelectVehicle = async () => {
-      try {
-        setIsVehicleLoading(true);
-        setVehicleError("");
-
-        const vehicles = await getVehicles();
-
-        const normalizedVehicles = (vehicles || []).map((v) => ({
-          ...v,
-          min_capacity_ton: Number(v.min_capacity_ton),
-          max_capacity_ton: Number(v.max_capacity_ton),
-          rate_per_km: Number(v.rate_per_km),
-          minimum_charge: Number(v.minimum_charge),
-          loaded_avg_speed_kmph: Number(v.loaded_avg_speed_kmph),
-          loading_hours: Number(v.loading_hours),
-          unloading_hours: Number(v.unloading_hours),
-        }));
-
-        const matchedVehicle = selectVehicle(normalizedVehicles, weightNum);
-
-        if (!matchedVehicle) {
-          setSelectedVehicle(null);
-          setVehicleError("No suitable vehicle found for this weight.");
-          return;
-        }
-
-        setSelectedVehicle(matchedVehicle);
-      } catch (error) {
-        setVehicleError("Failed to fetch vehicle data.");
-        setSelectedVehicle(null);
-      } finally {
-        setIsVehicleLoading(false);
-      }
-    };
-
-    fetchAndSelectVehicle();
-  }, [weightNum]);
-
-  const isPageLoading = isDistanceLoading || isVehicleLoading;
-
-  useEffect(() => {
-    if (!isPageLoading) {
-      const timer = setTimeout(() => {
-        setShowPage(true);
-      }, 150);
-
-      return () => clearTimeout(timer);
-    } else {
-      setShowPage(false);
-    }
-  }, [isPageLoading]);
-
-  const finalCost = useMemo(() => {
-    if (!selectedVehicle || distanceKm === null) return null;
-
-    const baseCost = distanceKm * Number(selectedVehicle.rate_per_km || 0);
-    const minCharge = Number(selectedVehicle.minimum_charge || 0);
-
-    return Math.max(baseCost, minCharge);
-  }, [selectedVehicle, distanceKm]);
-
-  const totalTransitHours = useMemo(() => {
-    if (!selectedVehicle || distanceKm === null) return null;
-
-    const speed = Number(selectedVehicle.loaded_avg_speed_kmph || 0);
-    const loadingHours = Number(selectedVehicle.loading_hours || 0);
-    const unloadingHours = Number(selectedVehicle.unloading_hours || 0);
-
-    if (!speed) return null;
-
-    const driveTime = distanceKm / speed;
-    return driveTime + loadingHours + unloadingHours;
-  }, [selectedVehicle, distanceKm]);
-
-  const distanceDisplay = useMemo(() => {
-    if (distanceKm !== null) return `${distanceKm.toLocaleString()} KM`;
-    return "Distance unavailable";
-  }, [distanceKm]);
-
-  const transitDisplay = useMemo(() => {
-    if (totalTransitHours !== null)
-      return `${totalTransitHours.toFixed(1)} hours`;
-    if (routeTimeHours !== null) return `${routeTimeHours.toFixed(1)} hours`;
-    return "Transit unavailable";
-  }, [totalTransitHours, routeTimeHours]);
-
-  const costDisplay = useMemo(() => {
-    if (finalCost !== null)
-      return `PKR ${Math.round(finalCost).toLocaleString()}`;
-    return "PKR N/A";
-  }, [finalCost]);
-
-  const saveEstimate = async () => {
-    try {
-      setIsSaving(true);
-
-      const res = await fetch("/api/save-estimate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName,
-          phone,
-          email,
-          pickup,
-          delivery,
-          pickupCity,
-          deliveryCity,
-          pickupLat: pickupLat ? Number(pickupLat) : null,
-          pickupLon: pickupLon ? Number(pickupLon) : null,
-          deliveryLat: deliveryLat ? Number(deliveryLat) : null,
-          deliveryLon: deliveryLon ? Number(deliveryLon) : null,
-          weight: weightNum,
-          weightType,
-          materials,
-          distanceKm,
-          transitHours: totalTransitHours ?? routeTimeHours,
-          vehicleName: selectedVehicle?.vehicle_name || null,
-          finalCost,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to save estimate");
-      }
-
-      if (data.success && data.estimateId) {
-        setEstimateId(data.estimateId);
-
-        if (typeof window !== "undefined") {
-          window.sessionStorage.setItem(
-            estimateStorageKey,
-            data.estimateId
-          );
-        }
-      }
-    } catch (err) {
-      console.error("Save estimate error:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    const readyToSave =
-      !isPageLoading &&
-      selectedVehicle &&
-      distanceKm !== null &&
-      finalCost !== null &&
-      !estimateId &&
-      !hasSavedEstimate.current;
-
-    if (readyToSave) {
-      hasSavedEstimate.current = true;
-      saveEstimate();
-    }
-  }, [
-    isPageLoading,
-    selectedVehicle,
-    distanceKm,
-    finalCost,
-    totalTransitHours,
-    routeTimeHours,
-    estimateId,
-  ]);
+  const finalCost = estimatePayload?.estimateData?.finalCost || "N/A";
+  const safeDistance = estimatePayload?.estimateData?.distance || "Distance unavailable";
+  const safeTransitTime =
+    estimatePayload?.estimateData?.transitTime || "Transit unavailable";
+  const safeVehicle =
+    estimatePayload?.estimateData?.vehicleName || "Not available";
+  const safeMaterials =
+    estimatePayload?.estimateData?.materialsText ||
+    (materials.length ? materials.join(", ") : "N/A");
+  const safeWeight =
+    estimatePayload?.estimateData?.weight ||
+    `${weightNum} ${weightType}`.trim();
 
   const handleRefine = () => {
     if (typeof window !== "undefined") {
@@ -342,7 +146,7 @@ function EstimateContent() {
   const buttonClass =
     "rounded-[12px] border border-red-700 bg-white px-5 py-2.5 text-xs font-semibold text-red-700 transition-all duration-200 hover:bg-red-700 hover:text-white hover:shadow-md md:text-sm";
 
-  if (isPageLoading) {
+  if (isPreparing) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-white px-4">
         <div className="text-center">
@@ -369,8 +173,22 @@ function EstimateContent() {
             Preparing your estimate
           </h2>
           <p className="mt-2 text-sm text-gray-600 md:text-base">
-            Please wait while we calculate the best transport option.
+            Please wait while we save your details, generate your estimate, and
+            send your confirmation.
           </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (prepareError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white px-4">
+        <div className="w-full max-w-[560px] rounded-[20px] border border-red-200 bg-red-50 p-6 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+          <h2 className="text-xl font-bold text-red-700">
+            Unable to prepare estimate
+          </h2>
+          <p className="mt-2 text-sm text-red-600">{prepareError}</p>
         </div>
       </main>
     );
@@ -383,61 +201,7 @@ function EstimateContent() {
       }`}
     >
       <section className="border-b border-gray-200 bg-white">
-        <div className="mx-auto max-w-[1400px] px-4 pt-3 md:px-6 md:pt-4 lg:px-8">
-          <div className="overflow-hidden rounded-[20px] bg-red-700 shadow-sm">
-            <div className="flex min-h-[58px] items-center justify-between px-4 sm:px-5 md:min-h-[64px] md:px-6">
-              <button
-                onClick={() => (window.location.href = "/")}
-                aria-label="Go back"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10"
-              >
-                <svg
-                  className="h-5 w-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-
-              <div className="flex-1 px-3 text-center">
-                <div className="truncate text-sm font-semibold text-white sm:text-base md:text-lg">
-                  {pickup} <span className="mx-1">→</span> {delivery}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                aria-label="Account icon"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 transition duration-200 hover:bg-white/30 focus:outline-none"
-              >
-                <svg
-                  className="h-5 w-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-[#f8fafc] px-4 pb-8 pt-6 md:px-6 md:pb-10 md:pt-8 lg:px-8">
-        <div className="mx-auto max-w-[1400px]">
+        <div className="mx-auto max-w-[1400px] px-4 py-5 md:px-6 lg:px-8">
           <div className="mx-auto max-w-[860px] text-center">
             <div className="mb-4 flex justify-center">
               <Link
@@ -463,9 +227,7 @@ function EstimateContent() {
             <div className="mt-3 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-center sm:gap-6">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                 Estimate ID:{" "}
-                <span className="text-gray-900">
-                  {estimateId || "Generating..."}
-                </span>
+                <span className="text-gray-900">{estimateId}</span>
               </p>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                 Generated:{" "}
@@ -475,7 +237,11 @@ function EstimateContent() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
 
+      <section className="bg-[#f8fafc] px-4 pb-8 pt-6 md:px-6 md:pb-10 md:pt-8 lg:px-8">
+        <div className="mx-auto max-w-[1400px]">
           <div className="mx-auto mt-4 max-w-[840px] md:mt-5">
             <div className="rounded-[22px] border border-gray-200 bg-white p-3 shadow-[0_14px_36px_rgba(15,23,42,0.08)] md:p-4">
               <div className="rounded-[16px] border border-red-100 bg-red-50/50 px-4 py-4 text-center md:px-5 md:py-4.5">
@@ -483,7 +249,7 @@ function EstimateContent() {
                   Estimated Cost
                 </p>
                 <p className="mt-1.5 text-2xl font-bold text-red-700 sm:text-3xl md:text-4xl">
-                  {costDisplay}
+                  PKR {finalCost}
                 </p>
                 <p className="mt-1 text-xs text-gray-600 md:text-sm">
                   Based on your route and requirements
@@ -510,7 +276,7 @@ function EstimateContent() {
                       Phone
                     </p>
                     <p className="mt-1 break-words text-sm font-semibold text-gray-900">
-                      {phone || "Not provided"}
+                      {phone}
                     </p>
                   </div>
 
@@ -519,30 +285,30 @@ function EstimateContent() {
                       Email
                     </p>
                     <p className="mt-1 break-words text-sm font-semibold text-gray-900">
-                      {email || "Not provided"}
+                      {email}
                     </p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <div className="rounded-[16px] border border-gray-200 p-3 md:p-4">
+                <div className="rounded-[16px] border border-gray-200 bg-white p-3 md:p-4">
                   <h3 className="text-sm font-bold text-gray-900 md:text-base">
                     Shipment Summary
                   </h3>
 
-                  <div className="mt-3 space-y-2.5">
+                  <div className="mt-3 space-y-3">
                     <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2.5">
                       <span className="text-xs text-gray-500">Total Weight</span>
                       <span className="text-right text-xs font-semibold text-gray-900">
-                        {weightParam} {weightType === "ton" ? "Tons" : "Kgs"}
+                        {safeWeight}
                       </span>
                     </div>
 
                     <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2.5">
                       <span className="text-xs text-gray-500">Material Type</span>
                       <span className="text-right text-xs font-semibold text-gray-900">
-                        {materials.join(", ")}
+                        {safeMaterials}
                       </span>
                     </div>
 
@@ -556,45 +322,37 @@ function EstimateContent() {
                     <div className="flex items-start justify-between gap-3">
                       <span className="text-xs text-gray-500">Distance</span>
                       <span className="text-right text-xs font-semibold text-gray-900">
-                        {distanceDisplay}
+                        {safeDistance}
                       </span>
                     </div>
-
-                    {distanceError && (
-                      <p className="pt-1 text-xs text-red-600">{distanceError}</p>
-                    )}
                   </div>
                 </div>
 
-                <div className="rounded-[16px] border border-gray-200 p-3 md:p-4">
+                <div className="rounded-[16px] border border-gray-200 bg-white p-3 md:p-4">
                   <h3 className="text-sm font-bold text-gray-900 md:text-base">
                     Recommendation
                   </h3>
 
-                  <div className="mt-3 rounded-[12px] bg-red-50 px-4 py-3">
-                    <p className="text-center text-lg font-bold text-red-700">
+                  <div className="mt-3 rounded-[12px] bg-red-50 px-4 py-3 text-center">
+                    <p className="text-base font-bold text-red-700">
                       Full Load
                     </p>
                   </div>
 
-                  <div className="mt-3 space-y-2.5">
+                  <div className="mt-3 space-y-3">
                     <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-2.5">
                       <span className="text-xs text-gray-500">Vehicle Class</span>
                       <span className="text-right text-xs font-semibold text-gray-900">
-                        {selectedVehicle?.vehicle_name || "Not available"}
+                        {safeVehicle}
                       </span>
                     </div>
 
                     <div className="flex items-start justify-between gap-3">
                       <span className="text-xs text-gray-500">Transit Time</span>
                       <span className="text-right text-xs font-semibold text-gray-900">
-                        {transitDisplay}
+                        {safeTransitTime}
                       </span>
                     </div>
-
-                    {vehicleError && (
-                      <p className="pt-1 text-xs text-red-600">{vehicleError}</p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -625,13 +383,13 @@ function EstimateContent() {
 
               <div className="mt-4 border-t border-gray-200 pt-3 text-center">
                 <p className="text-[11px] text-gray-500">
-                  Opposite kohinoor Textile Mill, Main Peshawar Road, Rawalpindi
+                  Opposite Kohinoor Textile Mill, Main Peshawar Road, Rawalpindi
                 </p>
                 <p className="mt-1 text-[11px] text-gray-500">
                   +92 334 6466818 | info@mjlogistics.com
                 </p>
                 <p className="mt-1.5 text-[10px] text-gray-400">
-                  © 2025 MJ Logistic Services. All rights reserved.
+                  © 2026 MJ Logistic Services. All rights reserved.
                 </p>
               </div>
             </div>

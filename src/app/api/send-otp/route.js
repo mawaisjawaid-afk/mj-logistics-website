@@ -81,7 +81,7 @@ export async function POST(req) {
                           </div>
 
                           <div style="font-size:36px;font-weight:800;letter-spacing:10px;color:#d6170d;">
-                            ${otp}
+                            ${otp} 
                           </div>
                         </div>
                       </div>

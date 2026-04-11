@@ -18,7 +18,6 @@ function EnterDetailsContent() {
   const [resendTimer, setResendTimer] = useState(0);
   const otpRefs = useRef([]);
 
-  // Get data from URL params
   const pickupFull = searchParams.get("pickup") || "";
   const deliveryFull = searchParams.get("delivery") || "";
   const pickupCity = searchParams.get("pickupCity") || "";
@@ -27,21 +26,18 @@ function EnterDetailsContent() {
   const weightType = searchParams.get("type") || "ton";
   const materialsParam = searchParams.get("materials") || "[]";
 
-  // Get coordinates from URL params
   const pickupLat = searchParams.get("pickupLat") || "";
   const pickupLon = searchParams.get("pickupLon") || "";
   const deliveryLat = searchParams.get("deliveryLat") || "";
   const deliveryLon = searchParams.get("deliveryLon") || "";
 
-  // Parse materials from JSON
   let materials = [];
   try {
     materials = JSON.parse(materialsParam);
-  } catch (e) {
+  } catch {
     materials = [];
   }
 
-  // Display clean city names in top strip
   const pickup = pickupCity || pickupFull || "Pickup";
   const delivery = deliveryCity || deliveryFull || "Delivery";
 
@@ -334,47 +330,28 @@ function EnterDetailsContent() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                aria-label="Account icon"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15 transition duration-200 hover:bg-white/30 focus:outline-none"
-              >
-                <svg
-                  className="h-5 w-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-              </button>
+              <div className="w-10 shrink-0" />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="bg-[#f8fafc] px-4 pb-14 pt-10 md:px-6 md:pb-16 md:pt-14 lg:px-8 lg:pt-16">
-        <div className="mx-auto max-w-[1400px]">
-          <div className="mx-auto max-w-[760px] text-center">
-            <h1 className="text-3xl font-bold leading-tight tracking-[-0.03em] text-gray-900 sm:text-4xl md:text-5xl">
-              Enter your details
-            </h1>
+      <section className="bg-[#f8fafc] px-4 py-8 md:px-6 md:py-10 lg:px-8">
+        <div className="mx-auto max-w-[760px]">
+          <div className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
+            <div className="border-b border-gray-100 px-5 py-6 text-center md:px-8 md:py-8">
+              <h1 className="text-2xl font-bold tracking-[-0.03em] text-gray-900 md:text-3xl">
+                Enter Details
+              </h1>
+              <p className="mt-2 text-sm text-gray-600 md:text-base">
+                Add your details to receive and verify your instant estimate.
+              </p>
+            </div>
 
-            <p className="mx-auto mt-4 max-w-[700px] text-sm leading-7 text-gray-600 md:text-lg">
-              Enter authentic details for better and quick response
-            </p>
-          </div>
-
-          <div className="mx-auto mt-6 max-w-[700px] md:mt-8">
-            <div className="rounded-[24px] border border-gray-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] md:p-5">
-              <div className="space-y-5">
+            <div className="px-5 py-6 md:px-8 md:py-8">
+              <div className="grid gap-5">
                 <div>
-                  <label className="mb-2 block text-base font-semibold text-gray-900 md:text-lg">
+                  <label className="mb-2 block text-sm font-semibold text-gray-800">
                     Full Name
                   </label>
                   <input
@@ -382,25 +359,25 @@ function EnterDetailsContent() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
-                    className="h-[52px] w-full rounded-[14px] border border-gray-200 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 md:h-[56px] md:text-base"
+                    className="w-full rounded-[14px] border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-red-700"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-base font-semibold text-gray-900 md:text-lg">
-                    Number
+                  <label className="mb-2 block text-sm font-semibold text-gray-800">
+                    WhatsApp Number
                   </label>
                   <input
-                    type="tel"
+                    type="text"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="Whatsapp no. recommended"
-                    className="h-[52px] w-full rounded-[14px] border border-gray-200 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 md:h-[56px] md:text-base"
+                    placeholder="Enter your WhatsApp number"
+                    className="w-full rounded-[14px] border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-red-700"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-base font-semibold text-gray-900 md:text-lg">
+                  <label className="mb-2 block text-sm font-semibold text-gray-800">
                     Email Address
                   </label>
                   <input
@@ -408,18 +385,45 @@ function EnterDetailsContent() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
-                    className="h-[52px] w-full rounded-[14px] border border-gray-200 px-4 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 md:h-[56px] md:text-base"
+                    className="w-full rounded-[14px] border border-gray-300 px-4 py-3 text-sm outline-none transition focus:border-red-700"
                   />
                 </div>
 
-                {otpSent && (
-                  <div>
-                    <label className="mb-2 block text-base font-semibold text-gray-900 md:text-lg">
-                      Enter OTP
-                    </label>
+                {!otpSent ? (
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp}
+                    className="mt-2 rounded-[14px] bg-red-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {sendingOtp ? "Sending OTP..." : "Send OTP"}
+                  </button>
+                ) : (
+                  <div className="rounded-[18px] border border-gray-200 bg-gray-50 p-4 md:p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-bold text-gray-900 md:text-base">
+                        Enter OTP
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={handleResendOtp}
+                        disabled={resendTimer > 0 || sendingOtp}
+                        className="text-xs font-semibold text-red-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                      >
+                        {resendTimer > 0
+                          ? `Resend in ${resendTimer}s`
+                          : sendingOtp
+                          ? "Resending..."
+                          : "Resend OTP"}
+                      </button>
+                    </div>
 
-                    <div className="flex justify-center gap-2 sm:gap-3">
-                      {[0, 1, 2, 3, 4, 5].map((index) => (
+                    <p className="mt-2 text-sm text-gray-600">
+                      We have sent a 6-digit verification code to your email.
+                    </p>
+
+                    <div className="mt-4 flex items-center justify-center gap-2 md:gap-3">
+                      {Array.from({ length: 6 }).map((_, index) => (
                         <input
                           key={index}
                           ref={(el) => {
@@ -427,7 +431,6 @@ function EnterDetailsContent() {
                           }}
                           type="text"
                           inputMode="numeric"
-                          autoComplete={index === 0 ? "one-time-code" : "off"}
                           maxLength={1}
                           value={otp[index] || ""}
                           onChange={(e) =>
@@ -435,55 +438,11 @@ function EnterDetailsContent() {
                           }
                           onKeyDown={(e) => handleOtpKeyDown(index, e)}
                           onPaste={handleOtpPaste}
-                          className="h-[52px] w-[44px] rounded-[14px] border border-gray-200 text-center text-lg font-semibold text-gray-900 outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 md:h-[56px] md:w-[52px] md:text-xl"
+                          className="h-12 w-12 rounded-[12px] border border-gray-300 text-center text-lg font-bold outline-none transition focus:border-red-700 md:h-14 md:w-14"
                         />
                       ))}
                     </div>
-
-                    <p className="mt-3 text-center text-xs text-gray-500 md:text-sm">
-                      Enter the 6-digit code sent to your email
-                    </p>
-
-                    <div className="mt-4 flex flex-col items-center gap-2">
-                      {resendTimer > 0 ? (
-                        <p className="text-sm text-gray-500">
-                          Resend OTP in{" "}
-                          <span className="font-semibold text-gray-900">
-                            {resendTimer}s
-                          </span>
-                        </p>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleResendOtp}
-                          disabled={sendingOtp}
-                          className="text-sm font-semibold text-red-700 transition hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {sendingOtp ? "Resending..." : "Resend OTP"}
-                        </button>
-                      )}
-                    </div>
                   </div>
-                )}
-              </div>
-
-              <div className="mt-6 flex justify-center">
-                {!otpSent ? (
-                  <button
-                    onClick={handleSendOtp}
-                    disabled={sendingOtp}
-                    className="rounded-[14px] bg-red-700 px-8 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[180px] md:text-base"
-                  >
-                    {sendingOtp ? "Sending OTP..." : "Get price"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleVerifyOtp()}
-                    disabled={verifyingOtp}
-                    className="rounded-[14px] bg-red-700 px-8 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-70 md:min-w-[180px] md:text-base"
-                  >
-                    {verifyingOtp ? "Verifying..." : "Verify OTP"}
-                  </button>
                 )}
               </div>
             </div>
@@ -496,7 +455,7 @@ function EnterDetailsContent() {
 
 export default function EnterDetailsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+    <Suspense fallback={null}>
       <EnterDetailsContent />
     </Suspense>
   );
