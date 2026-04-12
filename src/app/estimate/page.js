@@ -32,6 +32,7 @@ function EstimateContent() {
   const [prepareError, setPrepareError] = useState("");
   const [estimatePayload, setEstimatePayload] = useState(null);
   const hasPreparedRef = useRef(false);
+  const hasTrackedLeadRef = useRef(false);
 
   let materials = [];
   try {
