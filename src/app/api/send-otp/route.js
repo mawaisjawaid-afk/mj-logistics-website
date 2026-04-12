@@ -32,7 +32,7 @@ export async function POST(req) {
     const { error: emailError } = await resend.emails.send({
       from: "MJ Logistics Services <no-reply@mjlogisticservices.com>",
       to: email,
-      subject: "Your OTP for MJ Logistics Services estimate request",
+      subject: "Your OTP for MJ Logistic Services estimate request",
       html: `
         <div style="margin:0;padding:0;background-color:#f4f6f8;">
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:30px 0;">
@@ -45,7 +45,7 @@ export async function POST(req) {
                     <td align="center" style="background:#ffffff;padding:28px 24px;border-bottom:1px solid #eee;">
                       <img 
                         src="https://mjlogisticservices.com/logo-6.png" 
-                        alt="MJ Logistics Services" 
+                        alt="MJ Logistic Services" 
                         style="display:block;max-width:190px;width:100%;height:auto;margin:0 auto 14px auto;"
                       />
 
@@ -69,7 +69,7 @@ export async function POST(req) {
 
                       <div style="font-size:15px;color:#4b5563;margin-bottom:24px;line-height:26px;">
                         Use the verification code below to continue your
-                        <strong> MJ Logistics Services </strong>
+                        <strong> MJ Logistic Services </strong>
                         estimate request. This code is valid for
                         <strong> 5 minutes</strong>.
                       </div>
@@ -97,7 +97,7 @@ export async function POST(req) {
                               Security Notice
                             </div>
                             <div style="font-size:13px;color:#6b7280;line-height:22px;">
-                              Never share this OTP with anyone. MJ Logistics Services will never ask for your verification code by phone, WhatsApp, or email.
+                              Never share this OTP with anyone. MJ Logistic Services will never ask for your verification code by phone, WhatsApp, or email.
                             </div>
                           </td>
                         </tr>
@@ -118,7 +118,7 @@ export async function POST(req) {
                       </div>
 
                       <div style="font-size:12px;color:#9ca3af;margin-top:8px;line-height:20px;">
-                        © ${new Date().getFullYear()} MJ Logistics Services. All rights reserved.
+                        © ${new Date().getFullYear()} MJ Logistic Services. All rights reserved.
                       </div>
 
                       <div style="font-size:12px;color:#9ca3af;margin-top:4px;line-height:20px;">
