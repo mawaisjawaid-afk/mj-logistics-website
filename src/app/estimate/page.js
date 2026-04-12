@@ -120,7 +120,8 @@ function EstimateContent() {
   const generatedAt = estimatePayload?.generatedAt || "";
 
   const finalCost = estimatePayload?.estimateData?.finalCost || "N/A";
-  const safeDistance = estimatePayload?.estimateData?.distance || "Distance unavailable";
+  const safeDistance =
+    estimatePayload?.estimateData?.distance || "Distance unavailable";
   const safeTransitTime =
     estimatePayload?.estimateData?.transitTime || "Transit unavailable";
   const safeVehicle =
@@ -199,8 +200,9 @@ function EstimateContent() {
 
   return (
     <main
-      className={`min-h-screen overflow-x-hidden bg-white text-gray-900 transition-all duration-300 ${showPage ? "opacity-100" : "opacity-0"
-        }`}
+      className={`min-h-screen overflow-x-hidden bg-white pb-24 text-gray-900 transition-all duration-300 md:pb-0 ${
+        showPage ? "opacity-100" : "opacity-0"
+      }`}
     >
       <section className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-[1400px] px-4 py-5 md:px-6 lg:px-8">
@@ -398,6 +400,26 @@ function EstimateContent() {
           </div>
         </div>
       </section>
+
+      <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-gray-200 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur md:hidden">
+        <div className="mx-auto flex max-w-[480px] gap-3">
+          <a
+            href="tel:+923346466818"
+            className="flex-1 rounded-[14px] bg-red-700 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-800"
+          >
+            Call Now
+          </a>
+
+          <a
+            href="https://wa.me/923346466818"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 rounded-[14px] border border-red-700 bg-white px-4 py-3 text-center text-sm font-semibold text-red-700 transition hover:bg-red-50"
+          >
+            WhatsApp
+          </a>
+        </div>
+      </div>
     </main>
   );
 }
