@@ -390,7 +390,7 @@ function EstimateContent() {
                   Opposite Kohinoor Textile Mill, Main Peshawar Road, Rawalpindi
                 </p>
                 <p className="mt-1 text-[11px] text-gray-500">
-                  +92 334 6466818 | info@mjlogistics.com
+                  +92 334 6466818 | info@mjlogisticservices.com
                 </p>
                 <p className="mt-1.5 text-[10px] text-gray-400">
                   © 2026 MJ Logistic Services. All rights reserved.
