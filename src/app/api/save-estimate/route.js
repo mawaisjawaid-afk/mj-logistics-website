@@ -33,6 +33,61 @@ const escapeHtml = (value) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
+async function sendEstimateToOdoo({
+  fullName,
+  phone,
+  email,
+  pickupCity,
+  deliveryCity,
+  estimateCode,
+  generatedAtIso,
+  distanceKm,
+  transitHours,
+  weightTon,
+  weightType,
+  materialsText,
+  vehicleName,
+  finalCost,
+}) {
+  const webhookUrl = process.env.ODOO_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    throw new Error("Missing ODOO_WEBHOOK_URL");
+  }
+
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      fullName: fullName || "",
+      phone: phone || "",
+      email: email || "",
+      pickupCity: pickupCity || "",
+      deliveryCity: deliveryCity || "",
+      estimateCode: estimateCode || "",
+      generatedAt: generatedAtIso || "",
+      distanceKm: typeof distanceKm === "number" ? distanceKm : 0,
+      transitHours: typeof transitHours === "number" ? transitHours : 0,
+      weightTon: typeof weightTon === "number" ? weightTon : 0,
+      weightType: weightType || "",
+      materialsText: materialsText || "",
+      vehicleName: vehicleName || "",
+      finalCost: typeof finalCost === "number" ? finalCost : 0,
+    }),
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Odoo webhook failed: ${response.status} ${text}`);
+  }
+
+  return text;
+}
+
 function wrapText(text, maxCharsPerLine = 42) {
   const safeText = String(text ?? "");
   const words = safeText.split(/\s+/);
@@ -311,16 +366,13 @@ async function createEstimatePdfBuffer({
 
   let y = height - 58;
 
-  // LOAD LOGO FROM PUBLIC FOLDER
   const logoPath = path.join(process.cwd(), "public", "logo-6.png");
   const logoBytes = fs.readFileSync(logoPath);
   const logoImage = await pdfDoc.embedPng(logoBytes);
 
-  // LOGO SIZE CONTROL
   const logoWidth = 140;
   const logoHeight = (logoImage.height / logoImage.width) * logoWidth;
 
-  // DRAW LOGO CENTERED
   page.drawImage(logoImage, {
     x: width / 2 - logoWidth / 2,
     y: y - logoHeight + 10,
@@ -374,11 +426,17 @@ async function createEstimatePdfBuffer({
     color: colors.red,
   });
 
-  drawCenteredText(page, "Based on your route and requirements", width / 2, y - 48, {
-    font: fontRegular,
-    size: 8.5,
-    color: colors.text,
-  });
+  drawCenteredText(
+    page,
+    "Based on your route and requirements",
+    width / 2,
+    y - 48,
+    {
+      font: fontRegular,
+      size: 8.5,
+      color: colors.text,
+    }
+  );
 
   y -= 72;
 
@@ -655,7 +713,9 @@ export async function POST(req) {
     const materials = Array.isArray(body.materials) ? body.materials : [];
     const materialsText = materials.length ? materials.join(", ") : "N/A";
 
-    const generatedAtText = formatDateTime(new Date());
+    const now = new Date();
+    const generatedAtText = formatDateTime(now);
+    const generatedAtIso = now.toISOString();
 
     const [routeData, vehiclesResult] = await Promise.all([
       calculateRouteDistance({
@@ -749,6 +809,23 @@ export async function POST(req) {
       throw updateError;
     }
 
+    await sendEstimateToOdoo({
+      fullName: safeName,
+      phone: body.phone?.trim() || "",
+      email: customerEmail || "",
+      pickupCity: pickupCity || "",
+      deliveryCity: deliveryCity || "",
+      estimateCode,
+      generatedAtIso,
+      distanceKm,
+      transitHours,
+      weightTon,
+      weightType,
+      materialsText,
+      vehicleName: matchedVehicle.vehicle_name || "",
+      finalCost: finalCostRaw,
+    });
+
     const safeWeight = `${weightTon} ${weightType}`.trim();
     const safeDistance = `${distanceKm.toLocaleString("en-PK")} KM`;
     const safeTransitHours = `${Number(transitHours).toFixed(1)} hours`;
@@ -811,29 +888,31 @@ export async function POST(req) {
           </td>
         </tr>
         ${[
-        ["Pickup Location", safePickup],
-        ["Delivery Location", safeDelivery],
-        ["Material Type", materialsText],
-        ["Total Weight", safeWeight],
-        ["Distance", safeDistance],
-        ["Vehicle Class", safeVehicle],
-        ["Transit Time", safeTransitHours],
-      ]
-        .map(
-          ([label, value], index, arr) => `
+          ["Pickup Location", safePickup],
+          ["Delivery Location", safeDelivery],
+          ["Material Type", materialsText],
+          ["Total Weight", safeWeight],
+          ["Distance", safeDistance],
+          ["Vehicle Class", safeVehicle],
+          ["Transit Time", safeTransitHours],
+        ]
+          .map(
+            ([label, value], index, arr) => `
               <tr>
-                <td style="padding:12px 14px;background:#f9fafb;border-bottom:${index === arr.length - 1 ? "0" : "1px solid #e5e7eb"
-            };font-size:13px;font-weight:700;color:#111827;width:40%;text-align:left;">
+                <td style="padding:12px 14px;background:#f9fafb;border-bottom:${
+                  index === arr.length - 1 ? "0" : "1px solid #e5e7eb"
+                };font-size:13px;font-weight:700;color:#111827;width:40%;text-align:left;">
                   ${escapeHtml(label)}
                 </td>
-                <td style="padding:12px 14px;border-bottom:${index === arr.length - 1 ? "0" : "1px solid #e5e7eb"
-            };font-size:13px;color:#4b5563;text-align:center;">
+                <td style="padding:12px 14px;border-bottom:${
+                  index === arr.length - 1 ? "0" : "1px solid #e5e7eb"
+                };font-size:13px;color:#4b5563;text-align:center;">
                   ${escapeHtml(value)}
                 </td>
               </tr>
             `
-        )
-        .join("")}
+          )
+          .join("")}
       </table>
     `;
 
@@ -1014,7 +1093,8 @@ export async function POST(req) {
     ];
 
     const fromEmail =
-      process.env.RESEND_FROM_EMAIL || "MJ Logistic Services <no-reply@mjlogisticservices.com>";
+      process.env.RESEND_FROM_EMAIL ||
+      "MJ Logistic Services <no-reply@mjlogisticservices.com>";
 
     const emailJobs = [
       resend.emails.send({
