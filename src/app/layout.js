@@ -17,9 +17,6 @@ export const metadata = {
   description:
     "MJ Logistic Services provides nationwide logistics, freight transport, heavy machinery handling, and fleet solutions across Pakistan. Get instant transport estimates and reliable delivery services.",
 
-  verification: {
-    facebook: "m8qvinyu9zvqvzb4h7a77jpo1aa3ts",
-  },
 
   icons: {
     icon: "/favicon.ico",
@@ -58,6 +55,12 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <meta
+          name="facebook-domain-verification"
+          content="m8qvinyu9zvqvzb4h7a77jpo1aa3ts"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         {/* Meta Pixel (NoScript fallback) */}
         <noscript>
