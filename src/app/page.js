@@ -305,7 +305,7 @@ export default function Home() {
       a: "Yes. We provide a complete fleet management solution covering compliance, preventive maintenance, driver management, tracking, and operations control. Pricing is offered separately based on fleet size and requirements, and a detailed demo can be arranged.",
     },
     {
-      q: "Can fleet owners register their vehicles with MJ Logistic Servies?",
+      q: "Can fleet owners register their vehicles with MJ Logistic Services?",
       a: "Yes. Fleet owners can onboard their vehicles into our network by providing required documentation such as vehicle papers, permits, and driver details. Once verified, the vehicles are added to our managed fleet system.",
     },
     {
@@ -553,7 +553,7 @@ export default function Home() {
             </h1>
 
             <p className="mt-5 max-w-[560px] text-base leading-7 text-gray-700 md:text-lg">
-              Reliable logistics and fleet management across Pakistan.
+              From heavy transport to machinery handling, we deliver across Pakistan with precision, reliability, and operational control.
             </p>
 
             <div className="mt-7 inline-flex rounded-2xl border border-gray-200 bg-white/90 p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm">
@@ -916,7 +916,7 @@ export default function Home() {
               <div className="grid items-center gap-10 p-6 md:p-8 xl:grid-cols-[0.9fr_1.1fr] xl:p-10">
                 <div>
                   <div className="inline-flex rounded-full border border-red-200 bg-red-50 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-red-700">
-                    Cargo clients Platform
+                    Cargo Clients Platform
                   </div>
 
                   <h3 className="mt-5 text-2xl font-bold text-gray-900 md:text-3xl">
