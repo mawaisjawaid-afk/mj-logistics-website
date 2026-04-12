@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 
@@ -31,6 +31,7 @@ function EstimateContent() {
   const [isPreparing, setIsPreparing] = useState(true);
   const [prepareError, setPrepareError] = useState("");
   const [estimatePayload, setEstimatePayload] = useState(null);
+  const hasPreparedRef = useRef(false);
 
   let materials = [];
   try {
@@ -46,6 +47,12 @@ function EstimateContent() {
   }, [weightParam, weightType]);
 
   useEffect(() => {
+    if (hasPreparedRef.current) return;
+    hasPreparedRef.current = true;
+
+    let isMounted = true;
+    let timer;
+
     const prepareEstimate = async () => {
       try {
         setIsPreparing(true);
@@ -80,38 +87,34 @@ function EstimateContent() {
           throw new Error(data.error || "Failed to prepare estimate");
         }
 
+        if (!isMounted) return;
+
         setEstimatePayload(data);
 
-        const timer = setTimeout(() => {
-          setShowPage(true);
+        timer = setTimeout(() => {
+          if (isMounted) {
+            setShowPage(true);
+          }
         }, 150);
-
-        return () => clearTimeout(timer);
       } catch (error) {
         console.error("Prepare estimate error:", error);
-        setPrepareError(error.message || "Unable to prepare estimate");
+        if (isMounted) {
+          setPrepareError(error.message || "Unable to prepare estimate");
+        }
       } finally {
-        setIsPreparing(false);
+        if (isMounted) {
+          setIsPreparing(false);
+        }
       }
     };
 
     prepareEstimate();
-  }, [
-    fullName,
-    phone,
-    email,
-    pickupFull,
-    deliveryFull,
-    pickupCity,
-    deliveryCity,
-    pickupLat,
-    pickupLon,
-    deliveryLat,
-    deliveryLon,
-    weightNum,
-    weightType,
-    materialsParam,
-  ]);
+
+    return () => {
+      isMounted = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
 
   const estimateId = estimatePayload?.estimateId || "";
   const generatedAt = estimatePayload?.generatedAt || "";
@@ -196,9 +199,8 @@ function EstimateContent() {
 
   return (
     <main
-      className={`min-h-screen overflow-x-hidden bg-white text-gray-900 transition-all duration-300 ${
-        showPage ? "opacity-100" : "opacity-0"
-      }`}
+      className={`min-h-screen overflow-x-hidden bg-white text-gray-900 transition-all duration-300 ${showPage ? "opacity-100" : "opacity-0"
+        }`}
     >
       <section className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-[1400px] px-4 py-5 md:px-6 lg:px-8">
