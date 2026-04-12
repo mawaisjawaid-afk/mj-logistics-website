@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -32,6 +33,95 @@ const escapeHtml = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+
+function normalizeText(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeNumber(value, decimals = 6) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  if (Number.isNaN(num)) return null;
+  return Number(num.toFixed(decimals));
+}
+
+function buildRequestHash({
+  fullName,
+  phone,
+  email,
+  pickup,
+  delivery,
+  pickupCity,
+  deliveryCity,
+  pickupLat,
+  pickupLon,
+  deliveryLat,
+  deliveryLon,
+  weightTon,
+  weightType,
+  materials,
+}) {
+  const normalizedPayload = {
+    fullName: normalizeText(fullName),
+    phone: normalizeText(phone),
+    email: normalizeText(email),
+    pickup: normalizeText(pickup),
+    delivery: normalizeText(delivery),
+    pickupCity: normalizeText(pickupCity),
+    deliveryCity: normalizeText(deliveryCity),
+    pickupLat: normalizeNumber(pickupLat),
+    pickupLon: normalizeNumber(pickupLon),
+    deliveryLat: normalizeNumber(deliveryLat),
+    deliveryLon: normalizeNumber(deliveryLon),
+    weightTon: normalizeNumber(weightTon, 3),
+    weightType: normalizeText(weightType),
+    materials: Array.isArray(materials)
+      ? [...materials].map((item) => normalizeText(item)).sort()
+      : [],
+  };
+
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify(normalizedPayload))
+    .digest("hex");
+}
+
+function buildEstimateResponse({
+  estimateCode,
+  generatedAtText,
+  safeName,
+  safePhone,
+  customerEmail,
+  safePickup,
+  safeDelivery,
+  materialsText,
+  safeWeight,
+  safeDistance,
+  safeVehicle,
+  safeTransitHours,
+  safeFinalCost,
+  reused = false,
+}) {
+  return {
+    success: true,
+    reused,
+    estimateId: estimateCode,
+    generatedAt: generatedAtText,
+    estimateData: {
+      fullName: safeName,
+      phone: safePhone,
+      email: customerEmail || "Not provided",
+      pickup: safePickup,
+      delivery: safeDelivery,
+      materialsText,
+      weight: safeWeight,
+      distance: safeDistance,
+      vehicleName: safeVehicle,
+      transitTime: safeTransitHours,
+      finalCost: safeFinalCost,
+    },
+  };
+}
 
 async function sendEstimateToOdoo({
   fullName,
@@ -645,7 +735,7 @@ async function createEstimatePdfBuffer({
 
   drawCenteredText(
     page,
-    "+92 334 6466818 | info@mjlogistics.com",
+    "+92 334 6466818 | info@mjlogisticservices.com",
     width / 2,
     64,
     {
@@ -713,6 +803,23 @@ export async function POST(req) {
     const materials = Array.isArray(body.materials) ? body.materials : [];
     const materialsText = materials.length ? materials.join(", ") : "N/A";
 
+    const requestHash = buildRequestHash({
+      fullName: body.fullName,
+      phone: body.phone,
+      email: customerEmail,
+      pickup,
+      delivery,
+      pickupCity,
+      deliveryCity,
+      pickupLat,
+      pickupLon,
+      deliveryLat,
+      deliveryLon,
+      weightTon,
+      weightType,
+      materials,
+    });
+
     const now = new Date();
     const generatedAtText = formatDateTime(now);
     const generatedAtIso = now.toISOString();
@@ -764,6 +871,63 @@ export async function POST(req) {
         ? Number((distanceKm / speed + loadingHours + unloadingHours).toFixed(1))
         : routeTimeHours;
 
+    const { data: existingEstimate, error: existingEstimateError } = await supabase
+      .from("estimates")
+      .select(
+        "id, estimate_code, created_at, full_name, phone, email, pickup, delivery, pickup_city, delivery_city, weight_value, weight_type, materials, distance_km, transit_hours, vehicle_name, final_cost"
+      )
+      .eq("request_hash", requestHash)
+      .maybeSingle();
+
+    if (existingEstimateError) {
+      throw existingEstimateError;
+    }
+
+    if (existingEstimate) {
+      const existingGeneratedAtText = formatDateTime(
+        existingEstimate.created_at || new Date()
+      );
+
+      const existingSafeWeight = `${existingEstimate.weight_value} ${existingEstimate.weight_type}`.trim();
+      const existingSafeDistance = `${Number(
+        existingEstimate.distance_km || 0
+      ).toLocaleString("en-PK")} KM`;
+      const existingSafeTransitHours = `${Number(
+        existingEstimate.transit_hours || 0
+      ).toFixed(1)} hours`;
+      const existingSafeVehicle = existingEstimate.vehicle_name || "Not available";
+      const existingSafeFinalCost = Math.round(
+        Number(existingEstimate.final_cost || 0)
+      ).toLocaleString("en-PK");
+      const existingMaterialsText =
+        Array.isArray(existingEstimate.materials) && existingEstimate.materials.length
+          ? existingEstimate.materials.join(", ")
+          : "N/A";
+
+      return NextResponse.json(
+        buildEstimateResponse({
+          estimateCode: existingEstimate.estimate_code,
+          generatedAtText: existingGeneratedAtText,
+          safeName: existingEstimate.full_name || safeName,
+          safePhone: existingEstimate.phone || safePhone,
+          customerEmail: existingEstimate.email || customerEmail,
+          safePickup:
+            existingEstimate.pickup_city || existingEstimate.pickup || safePickup,
+          safeDelivery:
+            existingEstimate.delivery_city ||
+            existingEstimate.delivery ||
+            safeDelivery,
+          materialsText: existingMaterialsText,
+          safeWeight: existingSafeWeight,
+          safeDistance: existingSafeDistance,
+          safeVehicle: existingSafeVehicle,
+          safeTransitHours: existingSafeTransitHours,
+          safeFinalCost: existingSafeFinalCost,
+          reused: true,
+        })
+      );
+    }
+
     const { data, error } = await supabase
       .from("estimates")
       .insert([
@@ -786,6 +950,7 @@ export async function POST(req) {
           transit_hours: transitHours,
           vehicle_name: matchedVehicle.vehicle_name || null,
           final_cost: finalCostRaw,
+          request_hash: requestHash,
         },
       ])
       .select()
@@ -926,7 +1091,7 @@ export async function POST(req) {
                   <td align="center" style="background:#ffffff;padding:28px 24px;border-bottom:1px solid #eee;">
                     <img
                       src="https://mjlogisticservices.com/logo-6.png"
-                      alt="MJ Logistics Services"
+                      alt="MJ Logistic Services"
                       style="display:block;max-width:190px;width:100%;height:auto;margin:0 auto 14px auto;"
                     />
                     <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:700;color:#111827;">
@@ -946,7 +1111,7 @@ export async function POST(req) {
                     </div>
 
                     <div style="font-size:15px;color:#4b5563;margin-bottom:24px;line-height:26px;text-align:left;">
-                      Thank you for choosing <strong>MJ Logistics Services</strong>.
+                      Thank you for choosing <strong>MJ Logistic Services</strong>.
                       Below is your instant estimate based on the shipment details you provided.
                     </div>
 
@@ -990,7 +1155,7 @@ export async function POST(req) {
                       A professional PDF estimate is attached with this email.
                     </div>
                     <div style="font-size:12px;color:#9ca3af;margin-top:8px;line-height:20px;">
-                      © ${new Date().getFullYear()} MJ Logistics Services. All rights reserved.
+                      © ${new Date().getFullYear()} MJ Logistic Services. All rights reserved.
                     </div>
                     <div style="font-size:12px;color:#9ca3af;margin-top:4px;line-height:20px;">
                       no-reply@mjlogisticservices.com
@@ -1014,7 +1179,7 @@ export async function POST(req) {
                   <td align="center" style="background:#ffffff;padding:28px 24px;border-bottom:1px solid #eee;">
                     <img
                       src="https://mjlogisticservices.com/logo-6.png"
-                      alt="MJ Logistics Services"
+                      alt="MJ Logistic Services"
                       style="display:block;max-width:190px;width:100%;height:auto;margin:0 auto 14px auto;"
                     />
                     <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:700;color:#111827;">
@@ -1071,7 +1236,7 @@ export async function POST(req) {
                       A professional PDF estimate is attached with this email.
                     </div>
                     <div style="font-size:12px;color:#9ca3af;margin-top:8px;line-height:20px;">
-                      © ${new Date().getFullYear()} MJ Logistics Services. All rights reserved.
+                      © ${new Date().getFullYear()} MJ Logistic Services. All rights reserved.
                     </div>
                     <div style="font-size:12px;color:#9ca3af;margin-top:4px;line-height:20px;">
                       no-reply@mjlogisticservices.com
@@ -1126,24 +1291,24 @@ export async function POST(req) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      estimateId: estimateCode,
-      generatedAt: generatedAtText,
-      estimateData: {
-        fullName: safeName,
-        phone: safePhone,
-        email: customerEmail || "Not provided",
-        pickup: safePickup,
-        delivery: safeDelivery,
+    return NextResponse.json(
+      buildEstimateResponse({
+        estimateCode,
+        generatedAtText,
+        safeName,
+        safePhone,
+        customerEmail,
+        safePickup,
+        safeDelivery,
         materialsText,
-        weight: safeWeight,
-        distance: safeDistance,
-        vehicleName: safeVehicle,
-        transitTime: safeTransitHours,
-        finalCost: safeFinalCost,
-      },
-    });
+        safeWeight,
+        safeDistance,
+        safeVehicle,
+        safeTransitHours,
+        safeFinalCost,
+        reused: false,
+      })
+    );
   } catch (err) {
     console.error("Save estimate API error:", err);
 
