@@ -23,7 +23,7 @@ export const metadata = {
   openGraph: {
     title: "MJ Logistic Services",
     description:
-      "Reliable nationwide logistics, freight, and fleet solutions across Pakistan.",
+      "Reliable nationwide logistics, freight, and fleet management solutions across Pakistan.",
     url: "https://www.mjlogisticservices.com",
     siteName: "MJ Logistic Services",
     images: [
