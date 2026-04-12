@@ -18,6 +18,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const formatDateTime = (date) =>
   new Date(date).toLocaleString("en-PK", {
+    timeZone: "Asia/Karachi",
     day: "2-digit",
     month: "short",
     year: "numeric",
