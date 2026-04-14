@@ -1256,7 +1256,7 @@ export default function Home() {
                 </a>
 
                 <div className="leading-6 text-gray-400">
-                  Opposite kohinoor Textile Mill, Main Peshawar Road, Rawalpindi
+                  Opposite Kohinoor Textile Mill, Main Peshawar Road, Rawalpindi
                 </div>
               </div>
 

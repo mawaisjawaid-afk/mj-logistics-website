@@ -117,6 +117,16 @@ function EstimateContent() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!estimatePayload || hasTrackedLeadRef.current) return;
+
+    hasTrackedLeadRef.current = true;
+
+    if (typeof window !== "undefined" && window.fbq) {
+      window.fbq("track", "Lead");
+    }
+  }, [estimatePayload]);
+
   const estimateId = estimatePayload?.estimateId || "";
   const generatedAt = estimatePayload?.generatedAt || "";
 
@@ -201,9 +211,8 @@ function EstimateContent() {
 
   return (
     <main
-      className={`min-h-screen overflow-x-hidden bg-white pb-24 text-gray-900 transition-all duration-300 md:pb-0 ${
-        showPage ? "opacity-100" : "opacity-0"
-      }`}
+      className={`min-h-screen overflow-x-hidden bg-white pb-24 text-gray-900 transition-all duration-300 md:pb-0 ${showPage ? "opacity-100" : "opacity-0"
+        }`}
     >
       <section className="border-b border-gray-200 bg-white">
         <div className="mx-auto max-w-[1400px] px-4 py-5 md:px-6 lg:px-8">
