@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function getTodayDate() {
@@ -41,7 +41,7 @@ function normalizeValue(value) {
     return String(value ?? "").trim();
 }
 
-export default function InternalBookingPage() {
+function InternalBookingContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -1433,5 +1433,13 @@ export default function InternalBookingPage() {
                 </div>
             </section>
         </main>
+    );
+}
+
+export default function InternalBookingPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-white" />}>
+            <InternalBookingContent />
+        </Suspense>
     );
 }
