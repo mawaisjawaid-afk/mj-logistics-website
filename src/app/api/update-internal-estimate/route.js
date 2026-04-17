@@ -17,7 +17,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const DEFAULT_ESTIMATE_TEAM_EMAIL = "estimates@mjlogisticservices.com";
 const DEFAULT_OPERATIONS_TEAM_EMAIL =
-  process.env.OPERATIONS_TEAM_EMAIL || "mohsin_afridi11@hotmail.com";
+  process.env.OPERATIONS_TEAM_EMAIL || "mohsinafridi117@gmail.com";
 
 const BRAND = {
   red: rgb(0.839, 0.09, 0.051),
