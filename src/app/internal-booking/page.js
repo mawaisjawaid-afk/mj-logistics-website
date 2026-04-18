@@ -61,11 +61,15 @@ function InternalBookingContent() {
     const [pickup, setPickup] = useState("");
     const [pickupSuggestions, setPickupSuggestions] = useState([]);
     const [pickupLocation, setPickupLocation] = useState(null);
+    const [pickupManualLat, setPickupManualLat] = useState("");
+    const [pickupManualLon, setPickupManualLon] = useState("");
     const [pickupOtherInfo, setPickupOtherInfo] = useState("");
 
     const [dropoff, setDropoff] = useState("");
     const [dropoffSuggestions, setDropoffSuggestions] = useState([]);
     const [dropoffLocation, setDropoffLocation] = useState(null);
+    const [dropoffManualLat, setDropoffManualLat] = useState("");
+    const [dropoffManualLon, setDropoffManualLon] = useState("");
     const [dropoffOtherInfo, setDropoffOtherInfo] = useState("");
 
     const [activeField, setActiveField] = useState(null);
@@ -131,11 +135,11 @@ function InternalBookingContent() {
         pickupLat:
             override.pickupLat !== undefined
                 ? override.pickupLat
-                : pickupLocation?.lat ?? null,
+                : pickupManualLat || pickupLocation?.lat || null,
         pickupLon:
             override.pickupLon !== undefined
                 ? override.pickupLon
-                : pickupLocation?.lon ?? null,
+                : pickupManualLon || pickupLocation?.lon || null,
         pickupOtherInfo: normalizeValue(
             override.pickupOtherInfo ?? pickupOtherInfo
         ),
@@ -150,11 +154,11 @@ function InternalBookingContent() {
         dropoffLat:
             override.dropoffLat !== undefined
                 ? override.dropoffLat
-                : dropoffLocation?.lat ?? null,
+                : dropoffManualLat || dropoffLocation?.lat || null,
         dropoffLon:
             override.dropoffLon !== undefined
                 ? override.dropoffLon
-                : dropoffLocation?.lon ?? null,
+                : dropoffManualLon || dropoffLocation?.lon || null,
         dropoffOtherInfo: normalizeValue(
             override.dropoffOtherInfo ?? dropoffOtherInfo
         ),
@@ -208,6 +212,10 @@ function InternalBookingContent() {
             documentsAvailable,
             documentsDetails,
             notes,
+            pickupManualLat,
+            pickupManualLon,
+            dropoffManualLat,
+            dropoffManualLon,
         ]
     );
 
@@ -255,6 +263,26 @@ function InternalBookingContent() {
         savingBooking ||
         generatingEstimate ||
         (hasLinkedEstimate && !hasFormChanges);
+
+    const resolvedPickupLat =
+        pickupManualLat.trim() !== ""
+            ? Number(pickupManualLat)
+            : pickupLocation?.lat ?? null;
+
+    const resolvedPickupLon =
+        pickupManualLon.trim() !== ""
+            ? Number(pickupManualLon)
+            : pickupLocation?.lon ?? null;
+
+    const resolvedDropoffLat =
+        dropoffManualLat.trim() !== ""
+            ? Number(dropoffManualLat)
+            : dropoffLocation?.lat ?? null;
+
+    const resolvedDropoffLon =
+        dropoffManualLon.trim() !== ""
+            ? Number(dropoffManualLon)
+            : dropoffLocation?.lon ?? null;
 
     const syncSnapshotFromBooking = (booking) => {
         const nextSnapshot = buildFormSnapshot({
@@ -342,6 +370,18 @@ function InternalBookingContent() {
                 }
                 : null
         );
+        setPickupManualLat(
+            booking.pickupLat !== null && booking.pickupLat !== undefined
+                ? String(booking.pickupLat)
+                : ""
+        );
+
+        setPickupManualLon(
+            booking.pickupLon !== null && booking.pickupLon !== undefined
+                ? String(booking.pickupLon)
+                : ""
+        );
+
         setPickupOtherInfo(booking.pickupOtherInfo || "");
         setPickupSuggestions([]);
 
@@ -364,6 +404,18 @@ function InternalBookingContent() {
                 }
                 : null
         );
+        setDropoffManualLat(
+            booking.dropoffLat !== null && booking.dropoffLat !== undefined
+                ? String(booking.dropoffLat)
+                : ""
+        );
+
+        setDropoffManualLon(
+            booking.dropoffLon !== null && booking.dropoffLon !== undefined
+                ? String(booking.dropoffLon)
+                : ""
+        );
+
         setDropoffOtherInfo(booking.dropoffOtherInfo || "");
         setDropoffSuggestions([]);
 
@@ -400,11 +452,15 @@ function InternalBookingContent() {
         setPickup("");
         setPickupSuggestions([]);
         setPickupLocation(null);
+        setPickupManualLat("");
+        setPickupManualLon("");
         setPickupOtherInfo("");
 
         setDropoff("");
         setDropoffSuggestions([]);
         setDropoffLocation(null);
+        setDropoffManualLat("");
+        setDropoffManualLon("");
         setDropoffOtherInfo("");
 
         setActiveField(null);
@@ -542,12 +598,54 @@ function InternalBookingContent() {
             nextErrors.contactNumber = "Contact Number is required";
         }
 
-        if (!pickup.trim() || !pickupLocation) {
-            nextErrors.pickup = "Please select Pickup Location from the dropdown";
+        const hasPickupDropdown = Boolean(pickupLocation);
+        const hasDropoffDropdown = Boolean(dropoffLocation);
+
+        const hasPickupManualLat = pickupManualLat.trim() !== "";
+        const hasPickupManualLon = pickupManualLon.trim() !== "";
+        const hasDropoffManualLat = dropoffManualLat.trim() !== "";
+        const hasDropoffManualLon = dropoffManualLon.trim() !== "";
+
+        if (!pickup.trim()) {
+            nextErrors.pickup = "Pickup Location is required";
+        } else if (!hasPickupDropdown && (!hasPickupManualLat || !hasPickupManualLon)) {
+            nextErrors.pickup =
+                "Select Pickup Location from dropdown or enter Pickup Latitude and Longitude";
         }
 
-        if (!dropoff.trim() || !dropoffLocation) {
-            nextErrors.dropoff = "Please select Drop-off Location from the dropdown";
+        if (!dropoff.trim()) {
+            nextErrors.dropoff = "Drop-off Location is required";
+        } else if (!hasDropoffDropdown && (!hasDropoffManualLat || !hasDropoffManualLon)) {
+            nextErrors.dropoff =
+                "Select Drop-off Location from dropdown or enter Drop-off Latitude and Longitude";
+        }
+
+        if (hasPickupManualLat && !hasPickupManualLon) {
+            nextErrors.pickupManualLon = "Pickup Longitude is required";
+        }
+        if (!hasPickupManualLat && hasPickupManualLon) {
+            nextErrors.pickupManualLat = "Pickup Latitude is required";
+        }
+
+        if (hasDropoffManualLat && !hasDropoffManualLon) {
+            nextErrors.dropoffManualLon = "Drop-off Longitude is required";
+        }
+        if (!hasDropoffManualLat && hasDropoffManualLon) {
+            nextErrors.dropoffManualLat = "Drop-off Latitude is required";
+        }
+
+        if (hasPickupManualLat && Number.isNaN(Number(pickupManualLat))) {
+            nextErrors.pickupManualLat = "Pickup Latitude must be a valid number";
+        }
+        if (hasPickupManualLon && Number.isNaN(Number(pickupManualLon))) {
+            nextErrors.pickupManualLon = "Pickup Longitude must be a valid number";
+        }
+
+        if (hasDropoffManualLat && Number.isNaN(Number(dropoffManualLat))) {
+            nextErrors.dropoffManualLat = "Drop-off Latitude must be a valid number";
+        }
+        if (hasDropoffManualLon && Number.isNaN(Number(dropoffManualLon))) {
+            nextErrors.dropoffManualLon = "Drop-off Longitude must be a valid number";
         }
 
         if (!material.trim()) {
@@ -600,14 +698,14 @@ function InternalBookingContent() {
 
                 pickupLabel: pickupLocation?.label || pickup,
                 pickupCity: pickupLocation?.city || null,
-                pickupLat: pickupLocation?.lat ?? null,
-                pickupLon: pickupLocation?.lon ?? null,
+                pickupLat: resolvedPickupLat,
+                pickupLon: resolvedPickupLon,
                 pickupOtherInfo,
 
                 dropoffLabel: dropoffLocation?.label || dropoff,
                 dropoffCity: dropoffLocation?.city || "",
-                dropoffLat: dropoffLocation?.lat ?? null,
-                dropoffLon: dropoffLocation?.lon ?? null,
+                dropoffLat: resolvedDropoffLat,
+                dropoffLon: resolvedDropoffLon,
                 dropoffOtherInfo,
 
                 material,
@@ -656,13 +754,13 @@ function InternalBookingContent() {
             contactNumber,
             pickupLabel: pickupLocation?.label || pickup,
             pickupCity: pickupLocation?.city || "",
-            pickupLat: pickupLocation?.lat ?? null,
-            pickupLon: pickupLocation?.lon ?? null,
+            pickupLat: resolvedPickupLat,
+            pickupLon: resolvedPickupLon,
             pickupOtherInfo,
             dropoffLabel: dropoffLocation?.label || dropoff,
             dropoffCity: dropoffLocation?.city || "",
-            dropoffLat: dropoffLocation?.lat ?? null,
-            dropoffLon: dropoffLocation?.lon ?? null,
+            dropoffLat: resolvedDropoffLat,
+            dropoffLon: resolvedDropoffLon,
             dropoffOtherInfo,
             material,
             materialSpecification,
@@ -719,14 +817,14 @@ function InternalBookingContent() {
 
                 pickupLabel: pickupLocation?.label || pickup,
                 pickupCity: pickupLocation?.city || "",
-                pickupLat: pickupLocation?.lat ?? null,
-                pickupLon: pickupLocation?.lon ?? null,
+                pickupLat: resolvedPickupLat,
+                pickupLon: resolvedPickupLon,
                 pickupOtherInfo,
 
                 dropoffLabel: dropoffLocation?.label || dropoff,
                 dropoffCity: dropoffLocation?.city || "",
-                dropoffLat: dropoffLocation?.lat ?? null,
-                dropoffLon: dropoffLocation?.lon ?? null,
+                dropoffLat: resolvedDropoffLat,
+                dropoffLon: resolvedDropoffLon,
                 dropoffOtherInfo,
 
                 material,
@@ -814,14 +912,14 @@ function InternalBookingContent() {
 
                 pickupLabel: pickupLocation?.label || pickup,
                 pickupCity: pickupLocation?.city || "",
-                pickupLat: pickupLocation?.lat ?? null,
-                pickupLon: pickupLocation?.lon ?? null,
+                pickupLat: resolvedPickupLat,
+                pickupLon: resolvedPickupLon,
                 pickupOtherInfo,
 
                 dropoffLabel: dropoffLocation?.label || dropoff,
                 dropoffCity: dropoffLocation?.city || "",
-                dropoffLat: dropoffLocation?.lat ?? null,
-                dropoffLon: dropoffLocation?.lon ?? null,
+                dropoffLat: resolvedDropoffLat,
+                dropoffLon: resolvedDropoffLon,
                 dropoffOtherInfo,
 
                 material,
@@ -1111,9 +1209,17 @@ function InternalBookingContent() {
                                                                 onClick={() => {
                                                                     setPickup(item.label);
                                                                     setPickupLocation(item);
+                                                                    setPickupManualLat(
+                                                                        item?.lat !== null && item?.lat !== undefined ? String(item.lat) : ""
+                                                                    );
+                                                                    setPickupManualLon(
+                                                                        item?.lon !== null && item?.lon !== undefined ? String(item.lon) : ""
+                                                                    );
                                                                     setPickupSuggestions([]);
                                                                     setActiveField(null);
                                                                     clearFieldError("pickup");
+                                                                    clearFieldError("pickupManualLat");
+                                                                    clearFieldError("pickupManualLon");
                                                                 }}
                                                                 className="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50"
                                                             >
@@ -1124,6 +1230,48 @@ function InternalBookingContent() {
                                                 )}
                                             {getErrorText("pickup")}
                                         </div>
+
+                                        <div className="grid gap-5 md:grid-cols-2">
+                                            <div>
+                                                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                                                    Pickup Latitude
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={pickupManualLat}
+                                                    onChange={(e) => {
+                                                        setPickupManualLat(e.target.value);
+                                                        clearFieldError("pickupManualLat");
+                                                        clearFieldError("pickup");
+                                                    }}
+                                                    placeholder="Enter pickup latitude"
+                                                    className={inputClass("pickupManualLat")}
+                                                />
+                                                {getErrorText("pickupManualLat")}
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                                                    Pickup Longitude
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={pickupManualLon}
+                                                    onChange={(e) => {
+                                                        setPickupManualLon(e.target.value);
+                                                        clearFieldError("pickupManualLon");
+                                                        clearFieldError("pickup");
+                                                    }}
+                                                    placeholder="Enter pickup longitude"
+                                                    className={inputClass("pickupManualLon")}
+                                                />
+                                                {getErrorText("pickupManualLon")}
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-gray-500">
+                                            Select from dropdown or enter manual coordinates from Google Maps.
+                                        </p>
 
                                         <div>
                                             <label className="mb-2 block text-sm font-semibold text-gray-800">
@@ -1166,9 +1314,17 @@ function InternalBookingContent() {
                                                                 onClick={() => {
                                                                     setDropoff(item.label);
                                                                     setDropoffLocation(item);
+                                                                    setDropoffManualLat(
+                                                                        item?.lat !== null && item?.lat !== undefined ? String(item.lat) : ""
+                                                                    );
+                                                                    setDropoffManualLon(
+                                                                        item?.lon !== null && item?.lon !== undefined ? String(item.lon) : ""
+                                                                    );
                                                                     setDropoffSuggestions([]);
                                                                     setActiveField(null);
                                                                     clearFieldError("dropoff");
+                                                                    clearFieldError("dropoffManualLat");
+                                                                    clearFieldError("dropoffManualLon");
                                                                 }}
                                                                 className="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50"
                                                             >
@@ -1179,6 +1335,48 @@ function InternalBookingContent() {
                                                 )}
                                             {getErrorText("dropoff")}
                                         </div>
+
+                                        <div className="grid gap-5 md:grid-cols-2">
+                                            <div>
+                                                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                                                    Drop-off Latitude
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={dropoffManualLat}
+                                                    onChange={(e) => {
+                                                        setDropoffManualLat(e.target.value);
+                                                        clearFieldError("dropoffManualLat");
+                                                        clearFieldError("dropoff");
+                                                    }}
+                                                    placeholder="Enter drop-off latitude"
+                                                    className={inputClass("dropoffManualLat")}
+                                                />
+                                                {getErrorText("dropoffManualLat")}
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-2 block text-sm font-semibold text-gray-800">
+                                                    Drop-off Longitude
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={dropoffManualLon}
+                                                    onChange={(e) => {
+                                                        setDropoffManualLon(e.target.value);
+                                                        clearFieldError("dropoffManualLon");
+                                                        clearFieldError("dropoff");
+                                                    }}
+                                                    placeholder="Enter drop-off longitude"
+                                                    className={inputClass("dropoffManualLon")}
+                                                />
+                                                {getErrorText("dropoffManualLon")}
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-gray-500">
+                                            If dropdown is not used, both latitude and longitude are required.
+                                        </p>
 
                                         <div>
                                             <label className="mb-2 block text-sm font-semibold text-gray-800">
