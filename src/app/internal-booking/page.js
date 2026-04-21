@@ -92,6 +92,8 @@ function InternalBookingContent() {
     const [errors, setErrors] = useState({});
     const [savingBooking, setSavingBooking] = useState(false);
     const [generatingEstimate, setGeneratingEstimate] = useState(false);
+    const [fetchingPickupLocation, setFetchingPickupLocation] = useState(false);
+    const [fetchingDropoffLocation, setFetchingDropoffLocation] = useState(false);
 
     const wrapperRef = useRef(null);
 
@@ -283,6 +285,152 @@ function InternalBookingContent() {
         dropoffManualLon.trim() !== ""
             ? Number(dropoffManualLon)
             : dropoffLocation?.lon ?? null;
+
+    const handleFetchPickupLocation = async () => {
+        if (!pickupManualLat.trim() || !pickupManualLon.trim()) {
+            setErrors((prev) => ({
+                ...prev,
+                pickupManualLat: !pickupManualLat.trim()
+                    ? "Pickup Latitude is required"
+                    : prev.pickupManualLat,
+                pickupManualLon: !pickupManualLon.trim()
+                    ? "Pickup Longitude is required"
+                    : prev.pickupManualLon,
+            }));
+            return;
+        }
+
+        if (
+            Number.isNaN(Number(pickupManualLat)) ||
+            Number.isNaN(Number(pickupManualLon))
+        ) {
+            setErrors((prev) => ({
+                ...prev,
+                pickupManualLat: Number.isNaN(Number(pickupManualLat))
+                    ? "Pickup Latitude must be a valid number"
+                    : prev.pickupManualLat,
+                pickupManualLon: Number.isNaN(Number(pickupManualLon))
+                    ? "Pickup Longitude must be a valid number"
+                    : prev.pickupManualLon,
+            }));
+            return;
+        }
+
+        try {
+            setFetchingPickupLocation(true);
+
+            const response = await fetch(
+                `/api/reverse-geocode?lat=${encodeURIComponent(
+                    pickupManualLat
+                )}&lon=${encodeURIComponent(pickupManualLon)}`
+            );
+
+            const text = await response.text();
+            let data = {};
+
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch (parseError) {
+                throw new Error("Invalid server response");
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to fetch pickup location");
+            }
+
+            const location = data.location;
+
+            setPickup(location.label || "");
+            setPickupLocation({
+                label: location.label || "",
+                city: location.city || "",
+                lat: location.lat ?? Number(pickupManualLat),
+                lon: location.lon ?? Number(pickupManualLon),
+            });
+
+            clearFieldError("pickup");
+            clearFieldError("pickupManualLat");
+            clearFieldError("pickupManualLon");
+        } catch (error) {
+            console.error("Fetch pickup location error:", error);
+            alert(error.message || "Failed to fetch pickup location");
+        } finally {
+            setFetchingPickupLocation(false);
+        }
+    };
+
+    const handleFetchDropoffLocation = async () => {
+        if (!dropoffManualLat.trim() || !dropoffManualLon.trim()) {
+            setErrors((prev) => ({
+                ...prev,
+                dropoffManualLat: !dropoffManualLat.trim()
+                    ? "Drop-off Latitude is required"
+                    : prev.dropoffManualLat,
+                dropoffManualLon: !dropoffManualLon.trim()
+                    ? "Drop-off Longitude is required"
+                    : prev.dropoffManualLon,
+            }));
+            return;
+        }
+
+        if (
+            Number.isNaN(Number(dropoffManualLat)) ||
+            Number.isNaN(Number(dropoffManualLon))
+        ) {
+            setErrors((prev) => ({
+                ...prev,
+                dropoffManualLat: Number.isNaN(Number(dropoffManualLat))
+                    ? "Drop-off Latitude must be a valid number"
+                    : prev.dropoffManualLat,
+                dropoffManualLon: Number.isNaN(Number(dropoffManualLon))
+                    ? "Drop-off Longitude must be a valid number"
+                    : prev.dropoffManualLon,
+            }));
+            return;
+        }
+
+        try {
+            setFetchingDropoffLocation(true);
+
+            const response = await fetch(
+                `/api/reverse-geocode?lat=${encodeURIComponent(
+                    dropoffManualLat
+                )}&lon=${encodeURIComponent(dropoffManualLon)}`
+            );
+
+            const text = await response.text();
+            let data = {};
+
+            try {
+                data = text ? JSON.parse(text) : {};
+            } catch (parseError) {
+                throw new Error("Invalid server response");
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to fetch drop-off location");
+            }
+
+            const location = data.location;
+
+            setDropoff(location.label || "");
+            setDropoffLocation({
+                label: location.label || "",
+                city: location.city || "",
+                lat: location.lat ?? Number(dropoffManualLat),
+                lon: location.lon ?? Number(dropoffManualLon),
+            });
+
+            clearFieldError("dropoff");
+            clearFieldError("dropoffManualLat");
+            clearFieldError("dropoffManualLon");
+        } catch (error) {
+            console.error("Fetch drop-off location error:", error);
+            alert(error.message || "Failed to fetch drop-off location");
+        } finally {
+            setFetchingDropoffLocation(false);
+        }
+    };
 
     const syncSnapshotFromBooking = (booking) => {
         const nextSnapshot = buildFormSnapshot({
@@ -1274,6 +1422,17 @@ function InternalBookingContent() {
                                         </p>
 
                                         <div>
+                                            <button
+                                                type="button"
+                                                onClick={handleFetchPickupLocation}
+                                                disabled={fetchingPickupLocation}
+                                                className="rounded-[12px] border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {fetchingPickupLocation ? "Fetching Pickup Location..." : "Fetch Pickup Location"}
+                                            </button>
+                                        </div>
+
+                                        <div>
                                             <label className="mb-2 block text-sm font-semibold text-gray-800">
                                                 Other Pickup Info
                                             </label>
@@ -1377,6 +1536,17 @@ function InternalBookingContent() {
                                         <p className="text-xs text-gray-500">
                                             If dropdown is not used, both latitude and longitude are required.
                                         </p>
+
+                                        <div>
+                                            <button
+                                                type="button"
+                                                onClick={handleFetchDropoffLocation}
+                                                disabled={fetchingDropoffLocation}
+                                                className="rounded-[12px] border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                            >
+                                                {fetchingDropoffLocation ? "Fetching Drop-off Location..." : "Fetch Drop-off Location"}
+                                            </button>
+                                        </div>
 
                                         <div>
                                             <label className="mb-2 block text-sm font-semibold text-gray-800">
